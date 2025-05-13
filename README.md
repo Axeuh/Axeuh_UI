@@ -758,9 +758,11 @@ set_lucency(1);
 - `set_interface_now`(`x_now`,`y_now`,`w_now`,`h_now`,`r_now`);
 - `set_interface_now`(`x_now`,`y_now`,`w_now`,`h_now`);
 
-### 设置面板动画目前位置和大小
+### 设置面板动画偏移值
 
 `x`为 x 轴，`y`为 y 轴，`w`为宽，`h`为高，`r`为圆角大小，圆角大小仅`Axeuh_UI_slider`生效。都是`int16_t`类型。
+
+要想实现动画修改这个数值就可以了，当然你直接改页面参数也是有动画效果的。但是不会保留这个面板本来的位置和大小。
 
 - `set_interlude_x`(`x`);
 - `set_interlude_y`(`y`);
