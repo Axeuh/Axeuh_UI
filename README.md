@@ -105,11 +105,14 @@ lib_deps =
 
 ```cpp
 /* 典型接线示例 (ESP32) */
-#define OLED_SDA  21  // I2C数据线
-#define OLED_SCL  22  // I2C时钟线
-#define ENC_A     34  // 摇杆x
-#define ENC_B     35  // 摇杆y
-#define ENC_SW    36  // 摇杆按键
+#define OLED_MOSI 23
+#define OLED_CLK 18
+#define OLED_CS 5
+#define OLED_DC 17
+#define OLED_Reset 16
+#define HW_X 34  // 摇杆x
+#define HW_Y 35  // 摇杆y
+#define HW_SW 36 // 摇杆按键
 ```
 
 ### 示例
