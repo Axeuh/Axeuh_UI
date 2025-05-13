@@ -323,12 +323,22 @@ public:
     }
     // 获取当前输入状态
     IN_PUT_Mode get_IN_now() { return IN_now; }
+    uint16_t get_fps_max() { return fps_max; }
+    float get_fps() { return fps; }
+
     // 发生输入状态
     void set_IN_now(IN_PUT_Mode in)
     {
         delay(10);
         xSemaphoreTake(xMutex_, 100);
         IN_now = in;
+        xSemaphoreGive(xMutex_);
+    }
+    // 设置FPS上限
+    void set_fps_max(uint16_t f)
+    {
+        xSemaphoreTake(xMutex_, 100);
+        fps_max = f;
         xSemaphoreGive(xMutex_);
     }
 
@@ -425,7 +435,7 @@ public:
         Axeuh_UI *ui = static_cast<Axeuh_UI *>(xTask1);
         ui->menu_display();
     }
-    void menu_display_xtaskbegin(UBaseType_t uxPriority = 4096 * 2, BaseType_t xCoreID = 0)
+    void menu_display_xtaskbegin(UBaseType_t Memory_size = 4096 * 2, BaseType_t xCoreID = 0)
     {
         // 确保任务只创建一次
         if (displayTaskHandle == nullptr)
@@ -433,7 +443,7 @@ public:
             xTaskCreatePinnedToCore(
                 menu_display,       // 任务函数
                 "menu_display",     // 任务名称
-                uxPriority,         // 堆栈大小
+                Memory_size,        // 堆栈大小
                 this,               // 传递this指针
                 1,                  // 优先级
                 &displayTaskHandle, // 任务句柄
@@ -1074,13 +1084,82 @@ public:
         cube_y_now = y_;
         xSemaphoreGive(xMutex);
     }
+    void set_cube_now(int16_t x_, int16_t y_, float scale_) // 设置实时坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        cube_x_now = x_;
+        cube_y_now = y_;
+        cube_scale_now = scale_;
+        xSemaphoreGive(xMutex);
+    }
     void set_scale(float scale) // 设置大小
     {
         xSemaphoreTake(xMutex, 100);
         cube_scale = scale;
         xSemaphoreGive(xMutex);
     }
+    void set_cube_rotate_speed_x(float x) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleX_speed = x;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_speed_y(float y) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleY_speed = y;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_speed_z(float z) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleZ_speed = z;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_speed(float x, float y, float z) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleX_speed = x;
+        angleY_speed = y;
+        angleZ_speed = z;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_x(float x) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleX = x;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_y(float y) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleY = y;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate_z(float z) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleZ = z;
+        xSemaphoreGive(xMutex);
+    }
+    void set_cube_rotate(float x, float y, float z) // 设置坐标
+    {
+        xSemaphoreTake(xMutex, 100);
+        angleX = x;
+        angleY = y;
+        angleZ = z;
+        xSemaphoreGive(xMutex);
+    }
 
+    int16_t get_cube_x() { return cube_x; }
+    int16_t get_cube_y() { return cube_y; }
+
+    float get_angleX() { return angleX; }
+    float get_angleY() { return angleY; }
+    float get_angleZ() { return angleZ; }
+    float get_angleX_speed() { return angleX_speed; }
+    float get_angleY_speed() { return angleY_speed; }
+    float get_angleZ_speed() { return angleZ_speed; }
     float get_scale() { return cube_scale; } // 获取大小
 
     void drawCube(U8G2 *D, Axeuh_UI *m);
@@ -1184,6 +1263,13 @@ public:
     void drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m);
 
     void set(MenuCallback_Ebook cb) { callback = cb; } // 设置回调函数
+    void set(String s_, int16_t s_x_ = 0, int16_t s_y_ = 0, alignMode a = LEFT_CENTER)
+    {
+        s = s_;
+        s_x = s_x_;
+        s_y = s_y_;
+        align = a;
+    }
 
     static void staticCallback(Axeuh_UI_Ebook *arg, Axeuh_UI_Panel *P, Axeuh_UI *m)
     {
@@ -1283,6 +1369,21 @@ public:
 
     unsigned long lastMillis = 0;
 
+    Axeuh_UI_Keyboard()
+    {
+    }
+    Axeuh_UI_Keyboard(MenuOption::AutolenString *Aoutput)
+    {
+        xSemaphoreTake(xMutex, 100);
+        this->Aoutput = Aoutput;
+        xSemaphoreGive(xMutex);
+    }
+    Axeuh_UI_Keyboard(String *output)
+    {
+        xSemaphoreTake(xMutex, 100);
+        this->output = output;
+        xSemaphoreGive(xMutex);
+    }
     void set(MenuOption::AutolenString *Aoutput)
     {
         xSemaphoreTake(xMutex, 100);
@@ -1359,79 +1460,33 @@ public:
 #endif
     Menu_gif *gif = nullptr; // 图片实例
 
-    uint8_t font_height = 12;//字体高度
+    uint8_t font_height = 12; // 字体高度
 
     Axeuh_UI_Panel() {}
 
     Axeuh_UI_Panel(Axeuh_UI_Ebook *Ebook_)
     {
-        Ebook = Ebook_;
-        Ebook->x = &x;
-        Ebook->y = &y;
-        Ebook->w = &w;
-        Ebook->h = &h;
-
-        Ebook->interlude_x = &interlude_x;
-        Ebook->interlude_y = &interlude_y;
-        Ebook->interlude_w = &interlude_w;
-        Ebook->interlude_h = &interlude_h;
-
-        Ebook->x_now = &x_now;
-        Ebook->y_now = &y_now;
-        Ebook->w_now = &w_now;
-        Ebook->h_now = &h_now;
-
-        Ebook->lucency = &lucency;
-        Ebook->if_Input = &if_Input;
-        Ebook->if_display = &if_display;
-        Ebook->return_num_pointer = &return_num_pointer;
+        set(Ebook_);
     }
     Axeuh_UI_Panel(Axeuh_UI_TextMenu *text_)
     {
-        text = text_;
-        text->x = &x;
-        text->y = &y;
-        text->w = &w;
-        text->h = &h;
-
-        text->interlude_x = &interlude_x;
-        text->interlude_y = &interlude_y;
-        text->interlude_w = &interlude_w;
-        text->interlude_h = &interlude_h;
-
-        text->x_now = &x_now;
-        text->y_now = &y_now;
-        text->w_now = &w_now;
-        text->h_now = &h_now;
-
-        text->lucency = &lucency;
-        text->if_display = &if_display;
-        text->if_Input = &if_Input;
+        set(text_);
     }
     Axeuh_UI_Panel(Axeuh_UI_slider *slider)
     {
-        slider_ = slider;
-        slider_->x = &x;
-        slider_->y = &y;
-        slider_->w = &w;
-        slider_->h = &h;
-
-        text->interlude_x = &interlude_x;
-        text->interlude_y = &interlude_y;
-        text->interlude_w = &interlude_w;
-        text->interlude_h = &interlude_h;
-
-        slider_->x_now = &x_now;
-        slider_->y_now = &y_now;
-        slider_->w_now = &w_now;
-        slider_->h_now = &h_now;
-        slider_->lucency = &lucency;
-        slider_->if_display = &if_display;
-        slider_->if_Input = &if_Input;
+        set(slider);
     }
     Axeuh_UI_Panel(Menu_gif *gif_)
     {
-        gif = gif_;
+        set(gif_);
+    }
+    Axeuh_UI_Panel(Axeuh_UI_Keyboard *k)
+    {
+        set(k);
+    }
+    Axeuh_UI_Panel(Axeuh_UI_Panel *k)
+    {
+        set(k);
     }
 
 #ifdef CHINESE_KEYBOARD
@@ -1667,7 +1722,7 @@ public:
         r = r_;
         xSemaphoreGive(xMutex);
     }
-    void set_interface(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)//设置页面目标坐标
+    void set_interface(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r) // 设置页面目标坐标
     {
         xSemaphoreTake(xMutex, 100);
         this->x = x;
@@ -1716,13 +1771,13 @@ public:
         r_now = r_;
         xSemaphoreGive(xMutex);
     }
-    void set_interface_now(Axeuh_UI_Panel *p)//继承实时坐标
+    void set_interface_now(Axeuh_UI_Panel *p) // 继承实时坐标
     {
         xSemaphoreTake(xMutex, 100);
         set_interface_now(p->x_now, p->y_now, p->w_now, p->h_now, p->r_now);
         xSemaphoreGive(xMutex);
     }
-    void set_interface_now(int16_t x_, int16_t y_, int16_t w_, int16_t h_, int16_t r_)//设置实时坐标
+    void set_interface_now(int16_t x_, int16_t y_, int16_t w_, int16_t h_, int16_t r_) // 设置实时坐标
     {
         xSemaphoreTake(xMutex, 100);
         x_now = x_;
@@ -1747,7 +1802,7 @@ public:
         set_interface_now(p->x, p->y, p->w, p->h, p->r);
         xSemaphoreGive(xMutex);
     }
-    void set_interlude(int16_t x_, int16_t y_, int16_t w_, int16_t h_)//设置动画偏移值
+    void set_interlude(int16_t x_, int16_t y_, int16_t w_, int16_t h_) // 设置动画偏移值
     {
         xSemaphoreTake(xMutex, 100);
         interlude_x = x_;
@@ -1812,7 +1867,7 @@ public:
     int16_t get_interlude_w() { return interlude_w; }
     int16_t get_interlude_h() { return interlude_h; }
 
-    int16_t get_textmenu_num_now()//获取当前文本菜单聚焦选项
+    int16_t get_textmenu_num_now() // 获取当前文本菜单聚焦选项
     {
         if (text != nullptr)
             return text->meun_number_now;
@@ -1820,7 +1875,7 @@ public:
             return -1;
     }
 
-    bool get_animation_all_isok()//检查动画是否结束
+    bool get_animation_all_isok() // 检查动画是否结束
     {
         if (text != nullptr)
             return text->get_animation_interface_isok();
