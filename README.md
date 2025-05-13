@@ -2,6 +2,9 @@
 
 基于Arduino平台和Axeuh_UI库开发的综合界面系统，集成多级菜单、动态图形、3D渲染和硬件交互功能。基于U8G2库实现高性能显示驱动。
 
+GIF或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾swap选项
+(GIF需要先转换成一帧一帧的图片)
+
 ![系统演示](image.png)
 
 ## 目录
@@ -34,25 +37,25 @@
   - 128x64 OLED显示驱动（U8G2集成）
   - GIF动画支持（`Menu_gif`结构）
   - 实时3D立方体渲染（`Axeuh_UI_Cube`类）
-  - 自定义字体支持（UTF-8编码）
 
 - **交互组件库**
   - 参数滑动调节条（`Axeuh_UI_slider`类）
   - 中文拼音输入键盘（`Axeuh_UI_Keyboard`类）
   - 状态栏组件（`Axeuh_UI_StatusBar`类）
-  - 对话框和Toast提示
+  - 弹窗（`Axeuh_UI_Panel`类）
 
 - **系统特性**
-  - 异步UI刷新（最高240FPS，`menu_display_xtaskbegin`）
+  - 异步UI刷新（`menu_display_xtaskbegin`）
   - 硬件中断优化（`xSemaphore`互斥锁）
   - 动态内存管理（`CharLenMap`字符缓存）
   - 低功耗模式支持
 
 ### 扩展功能
 - 串口配置接口
-- 主题切换（亮色/暗色）
+- 拼音键盘
+- 适配不同大小的屏幕
 - 屏幕旋转支持（0°/90°/180°/270°）
-- 多语言支持框架
+- 适配不同字库（后续添加）
 
 ---
 
@@ -63,18 +66,13 @@
 |--------------------|--------------------|------------------|----------------|
 | 主控板             | 支持Arduino框架    | ESP32 DevKit     | -              |
 | OLED显示屏         | 128x64分辨率       | SSD1306          | SPI/I2C        |
-| 输入设备           | 5向导航+确认键     | EC11编码器       | GPIO中断       |
+| 输入设备           | 5向导航+确认键     | 无       | ADC       |
 
 ### 推荐配置
 - **处理器性能**
-  - Flash存储：≥4MB（用于存储图形资源）
-  - SRAM：≥160KB（复杂界面需求）
-  - 时钟速度：≥160MHz（流畅动画）
-
-- **扩展功能**
-  - 实时时钟模块（DS3231）
-  - 锂电池管理电路
-  - 蜂鸣器（交互反馈）
+  - Flash存储：≥​​512KB（用于存储图形资源）
+  - SRAM：≥48KB
+  - 时钟速度：≥72MHz（流畅动画）
 
 ---
 
@@ -85,12 +83,12 @@
 #### PlatformIO
 ```ini
 lib_deps =
-    https://github.com/Wuqiyang312/Axeuh_UI_lib.git
+    https://github.com/Axeuh/Axeuh_UI_lib.git
 ```
 
 #### Arduino IDE
 1. 通过库管理器安装 `U8g2`
-2. 下载[Axeuh_UI库ZIP](https://github.com/Wuqiyang312/Axeuh_UI_lib/archive/main.zip)
+2. 下载[Axeuh_UI库ZIP](https://github.com/Axeuh/Axeuh_UI/archive/main.zip)
 3. 菜单栏：项目 > 加载库 > 添加.ZIP库
 
 ### 硬件连接
@@ -98,9 +96,9 @@ lib_deps =
 /* 典型接线示例 (ESP32) */
 #define OLED_SDA  21  // I2C数据线
 #define OLED_SCL  22  // I2C时钟线
-#define ENC_A     34  // 编码器A相
-#define ENC_B     35  // 编码器B相 
-#define ENC_SW    36  // 编码器按键
+#define ENC_A     34  // 摇杆x
+#define ENC_B     35  // 摇杆y
+#define ENC_SW    36  // 摇杆按键
 ```
 
 ### 基础配置
@@ -173,27 +171,26 @@ void loop() {
 ### 组件框图
 ```
 ┌─────────────────┐
-│   用户输入      │←[硬件中断]
+│   用户输入       │←[硬件中断]
 └───────┬─────────┘
         ↓
 ┌─────────────────┐
-│  事件处理器     │→[消息队列]
+│  事件处理器      │→[消息队列]
 └───────┬─────────┘
         ↓
 ┌─────────────────┐
-│  UI渲染引擎     │←[帧同步]
+│  UI渲染引擎      │←[帧同步]
 └───────┬─────────┘
         ↓
 ┌─────────────────┐
-│ 显示驱动(U8G2)  │→[SPI/I2C]
+│ 显示驱动(U8G2)   │→[SPI/I2C]
 └─────────────────┘
 ```
 
 ### 关键设计
 1. **事件驱动模型**
-   - 中断采集输入（`IN_PUT_Mode`枚举）
+   - 采集输入（`IN_PUT_Mode`枚举）
    - 非阻塞式事件处理（`xTaskCreatePinnedToCore`）
-   - 双缓冲渲染技术
 
 2. **资源管理**
    - 预编译位图资源（`gif.h`）
@@ -208,7 +205,7 @@ void loop() {
 | 方法 | 说明 |
 |------|------|
 | `begin()` | 初始化UI系统 |
-| `addMenu()` | 添加菜单项 |
+| `set()` | 添加菜单项 |
 | `animation()` | 渐进动画控制 |
 
 ### Axeuh_UI_Panel (面板容器)
@@ -235,43 +232,6 @@ Axeuh_UI_TextMenu menu(options, 2);
 
 ---
 
-## 使用示例
-
-### 3D立方体动画
-```cpp
-Axeuh_UI_Cube cube;
-cube.set_cube(64, 32, 15); // 中心位置，缩放系数
-
-void loop() {
-  cube.drawCube(&u8g2, &UI);
-}
-```
-
-### 参数滑动条
-```cpp
-float brightness = 50;
-Axeuh_UI_slider slider("亮度", &brightness, 0, 100);
-
-void draw() {
-  slider.drawSlider(&u8g2, UI.get_IN_now(), &panel, &UI);
-}
-```
-
-### GIF动画显示
-```cpp
-Menu_gif anim(
-  epd_bitmap_allArray1, // GIF帧数组
-  30,                   // 总帧数
-  64, 32,               // 位置
-  32, 32,               // 尺寸
-  100,                  // 播放速度(ms)
-  0,                    // 起始帧
-  AutoPlay              // 播放模式
-);
-```
-
----
-
 ## API参考
 
 ### 关键方法
@@ -286,32 +246,6 @@ Menu_gif anim(
 typedef void (*textMenuCallback)(Axeuh_UI_Panel*, Axeuh_UI*);
 typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
 ```
-
----
-
-## 开发指南
-
-### 自定义组件步骤
-1. 继承 `UIComponent` 基类
-2. 实现 `draw()` 和 `handleEvent()` 方法
-3. 注册到系统组件池
-
-### 性能优化建议
-- 使用 `PROGMEM` 存储大尺寸位图
-- 避免在循环中创建临时对象
-- 启用字符缓存（`CharLenMap`）
-
----
-
-## 常见问题
-
-### Q1: 中文显示乱码
-- 确保使用`u8g2_font_wqy12_t_gb2312`字体
-- 检查文件编码为UTF-8
-
-### Q2: 动画卡顿
-- 增加任务堆栈大小（`uxPriority`参数）
-- 降低GIF帧率
 
 ---
 
