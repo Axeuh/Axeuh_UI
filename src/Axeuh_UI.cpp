@@ -590,12 +590,12 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
 
         pointer_y = pointer_y_all + interface_text_y;
 
-        Serial.print("pointer_y_now:" + (String)pointer_y_now);
+        /*Serial.print("pointer_y_now:" + (String)pointer_y_now);
         Serial.print("\t,y_now:" + (String)*y_now);
         Serial.print("\t,interface_h_:" + (String)interface_h_);
         Serial.print("\t,interface_text_y_now:" + (String)interface_text_y_now);
 
-        Serial.println();
+        Serial.println();*/
 
         if (in_put_now == DOWM)
         {
