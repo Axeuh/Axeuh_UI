@@ -3,19 +3,26 @@
  * 包含矩阵键盘输入、OLED显示、多级菜单、动画、滑动条、3D立方体等多种功能
  */
 
-// #include <Arduino.h>
+#include <Arduino.h>
 #include "Axeuh_UI.h"
 #include "gif.h"
 #include <Wire.h>
+#include <SPI.h>
 // 硬件配置 --------------------------------------------------------
-// 矩阵键盘行列引脚定义
-// const int rowPins[4] = {33, 25, 26, 27};    // 行引脚
-// const int colPins[5] = {14, 12, 13, 15, 2}; // 列引脚
+
+#define OLED_MOSI 23
+#define OLED_CLK 18
+#define OLED_CS 5
+#define OLED_DC 17
+#define OLED_Reset 16
+#define HW_X 34  // 摇杆x
+#define HW_Y 35  // 摇杆y
+#define HW_SW 36 // 摇杆按键
 
 // 显示驱动配置 ----------------------------------------------------
 // 使用硬件SPI的OLED显示配置（参数：旋转方向, CS引脚, DC引脚, Reset引脚）
 // U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2_(U8G2_R0); //iic方案
-U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2_(U8G2_R0, 5, 17, 16);
+U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2_(U8G2_R0, OLED_CS, OLED_DC, OLED_Reset);
 Axeuh_UI myui(&u8g2_); // 初始化UI系统
 
 // 动画资源定义 ----------------------------------------------------
@@ -133,49 +140,17 @@ Axeuh_UI_Panel my_Panel_keyboard;
 // 输入处理函数 ----------------------------------------------------
 IN_PUT_Mode my_ui_input()
 {
-  if (!digitalRead(25))
+  if (!digitalRead(HW_SW))
     return SELECT; // 选中
-  else if (analogRead(35) >= 3995)
+  else if (analogRead(HW_Y) >= 3995)
     return DOWM; // 向下
-  else if (analogRead(35) <= 100)
+  else if (analogRead(HW_Y) <= 100)
     return UP; // 向上
-  else if (analogRead(34) >= 3995)
+  else if (analogRead(HW_X) >= 3995)
     return LEFT; // 向左
-  else if (analogRead(34) <= 100)
+  else if (analogRead(HW_X) <= 100)
     return RIGHT; // 向右
-
-  // for (int row = 0; row < 4; row++)
-  // {
-  //   pinMode(rowPins[row], OUTPUT);
-  //   digitalWrite(rowPins[row], LOW);
-  //   int col;
-  //   for (col = 0; col < 5; col++)
-  //   {
-  //     pinMode(colPins[col], INPUT_PULLUP);
-  //     if (digitalRead(colPins[col]) == LOW)
-  //     {
-  //       pinMode(colPins[col], INPUT_PULLUP); // Reset the column pin to INPUT mode
-  //       pinMode(rowPins[row], INPUT_PULLUP); // Reset the row pin to INPUT mode
-
-  //       if (keypadCharacters[row][col] == 10)
-  //         return UP;
-  //       else if (keypadCharacters[row][col] == 18)
-  //         return DOWM;
-  //       else if (keypadCharacters[row][col] == 14)
-  //         return SELECT;
-  //       else if (keypadCharacters[row][col] == 13)
-  //         return LEFT;
-  //       else if (keypadCharacters[row][col] == 15)
-  //         return RIGHT;
-  //       else
-  //         return STOP;
-  //     }
-  //   }
-  //   pinMode(colPins[col], INPUT_PULLUP); // Reset the column pin to INPUT mode
-  //   pinMode(rowPins[row], INPUT_PULLUP); // Reset the row pin to INPUT mode
-  // }
-
-  return STOP; // 无输入
+  return STOP;    // 无输入
 }
 // 回调函数组 ------------------------------------------------------
 // 设置菜单回调
@@ -354,12 +329,12 @@ void my_ebook_callback(Axeuh_UI_Panel *p, Axeuh_UI *m) // 文本显示窗口的�
 // 初始化设置 ------------------------------------------------------
 void setup()
 {
-  Serial.begin(115200); // 初始化串口
-  // Wire.begin(22, 21);
+  Serial.begin(115200);                    // 初始化串口
+  SPI.begin(OLED_CLK, OLED_MOSI, OLED_CS); // 初始化SPI
   // 按键（摇杆）引脚初始化
-  pinMode(35, INPUT);
-  pinMode(34, INPUT);
-  pinMode(25, INPUT_PULLUP);
+  pinMode(HW_Y, INPUT);
+  pinMode(HW_X, INPUT);
+  pinMode(HW_SW, INPUT_PULLUP);
 
   // UI系统初始化
   myui.begin();          // 初始化（必要！）
@@ -392,14 +367,14 @@ void setup()
   cube.set_cube(64, 32, 15); // 初始立方体位置和大小
 
   my_Panel_text.text->set_menuOptions_x(6, -38); // 设置第六个选项的x偏移-38
-  my_Panel_text.display_off();//关闭显示
-  my_Panel_text.set_lucency(1);//设置背景透明
+  my_Panel_text.display_off();                   // 关闭显示
+  my_Panel_text.set_lucency(1);                  // 设置背景透明
 
-  my_Panel_1.set_interlude(0, -64, 0, 0);//设置动画偏移值
-  my_Panel_1.set_interface_now(16, -64, 96, 46);//设置坐标实时位置
-  my_Panel_1.set_interface(16, 10, 96, 46);//设置坐标目标位置
+  my_Panel_1.set_interlude(0, -64, 0, 0);        // 设置动画偏移值
+  my_Panel_1.set_interface_now(16, -64, 96, 46); // 设置坐标实时位置
+  my_Panel_1.set_interface(16, 10, 96, 46);      // 设置坐标目标位置
 
-  my_Panel_4.set_lucency(1);//
+  my_Panel_4.set_lucency(1); //
 
   my_Panel_slider.set_interface(0, 10, 110, 46, 8);
   my_Panel_slider.set_interface_now(12, -64, 96, 46);
@@ -418,7 +393,7 @@ void setup()
 
   delay(2000);
 
-  my_Panel_text.of();//打开首级菜单
+  my_Panel_text.of(); // 打开首级菜单
 
   my_Panel_text.set_interlude(0, 0, 0, 0);
 
@@ -429,8 +404,4 @@ void setup()
 
 void loop()
 {
-  while (1)
-  {
-
-  }
 }
