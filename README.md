@@ -79,12 +79,6 @@ lib_deps =
     https://github.com/Axeuh/Axeuh_UI.git
 ```
 
-#### Arduino IDE
-
-1. 通过库管理器安装 `U8g2`
-2. 下载[Axeuh_UI 库 ZIP](https://github.com/Axeuh/Axeuh_UI/archive/main.zip)
-3. 菜单栏：项目 > 加载库 > 添加.ZIP 库
-
 ### 硬件连接
 
 ```cpp
@@ -538,7 +532,7 @@ Axeuh_UI_Panel
 
 # 核心类说明
 
-## Axeuh_UI
+## Axeuh_UI（框架）
 
 ### 初始化：
 
@@ -641,7 +635,7 @@ get_fps_max();
 
 ---
 
-## Axeuh_UI_Panel
+## Axeuh_UI_Panel（面板）
 
 ### 添加实例
 
@@ -907,6 +901,10 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 如果遇到本应该能够使用的`String`的函数未定义，可手动添加并实现`MenuOption::AutolenString`的`String`的函数
 
 为什么会存在`MenuOption::AutolenString`？，是因为在绘制 UI 中，实时计算选项长度会降低屏幕刷新速度。
+
+---
+
+## Axeuh_UI_slider
 
 ### 回调函数类型
 
