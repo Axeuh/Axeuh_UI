@@ -70,7 +70,7 @@ GIF或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾swap�
 
 ### 推荐配置
 - **处理器性能**
-  - Flash存储：≥​​512KB（用于存储图形资源）
+  - Flash存储：≥​​512KB（用于存储图形资源和字库）
   - SRAM：≥48KB
   - 时钟速度：≥72MHz（流畅动画）
 
