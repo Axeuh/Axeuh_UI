@@ -958,6 +958,29 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 
 ---
 
+## Menu_gif（图片）
+
+### 初始化
+
+`const unsigned char` `**frames` 图片或 GIF 指针  
+`uint16_t` `frameCount_` 总帧数  
+`uint16_t` `x` x 坐标  
+`uint16_t` `y` y 坐标  
+`uint16_t` `w` 图片宽度  
+`uint16_t` `h` 图片高度  
+`uint8_t` `speed` 动画速度，默认为 30  
+`uint16_t` `startFrame` 开始帧，默认为 0  
+`OptiongifMode1` `aPlay` 是否自动播放，默认为 AutoPlay  
+`OptiongifMode2` `hPlay` 是否聚焦时滑入界面，默认为 Show
+
+`Menu_gif` `my_gif` = {`**frames`, `frameCount_`, `x`, `y`, `w`, `h`, `speed`, `startFrame`, `aPlay`, `hPlay`};
+
+```cpp
+Menu_gif my_gif_1 = {icons_Homer_SimpsonallArray, 1, 5, 2, 50, 50, 30, 0, AutoPlay, Hide}; // 动图
+```
+
+---
+
 ## Axeuh_UI_slider（滑动条）
 
 ### 构造及设置
@@ -1008,7 +1031,7 @@ void setup()
 `set_cube`( `cube_x`, `cube_y`, `cube_scale`);  
 `set_scale`( `cube_scale`);设置大小
 
-`set_cube_now`( `cube_x`, `cube_y`, `cube_scale`);设置实时坐标位置和大小  
+`set_cube_now`( `cube_x`, `cube_y`, `cube_scale`);设置实时坐标位置和大小
 
 ```cpp
 static Axeuh_UI_Cube cube;
@@ -1042,6 +1065,7 @@ cube.set_cube_rotate(1,2,3);
 ```
 
 ### 设置角速度
+
 - `float` `angleX_speed` x 轴角速度
 - `float` `angleY_speed` y 轴角速度
 - `float` `angleZ_speed` z 轴角速度
@@ -1071,7 +1095,7 @@ cube.set_cube_rotate_speed(0.01,0.02,0.03);
 `get_angleX_speed()` 返回类型是`float`  
 `get_angleY_speed()` 返回类型是`float`  
 `get_angleZ_speed()` 返回类型是`float`  
-`get_scale()` 返回类型是`float`  
+`get_scale()` 返回类型是`float`
 
 ```cpp
 static Axeuh_UI_Cube cube;
@@ -1090,6 +1114,7 @@ cube.get_scale()
 ## Axeuh_UI_StatusBar（状态栏）
 
 ### 设置参数
+
 ```cpp
 static Axeuh_UI_StatusBar bar;
 bar.set_y(10);
@@ -1103,9 +1128,9 @@ bar.set_y_now(10);
 ### 构建
 
 `String` `s` 文本内容  
-`int16_t` `x` x坐标，默认为0  
-`int16_t` `y` y坐标，默认为0  
-`alignMode` `a` 对齐方式，默认为LEFT_CENTER（文本查看框暂不支持对齐方式） 
+`int16_t` `x` x 坐标，默认为 0  
+`int16_t` `y` y 坐标，默认为 0  
+`alignMode` `a` 对齐方式，默认为 LEFT_CENTER（文本查看框暂不支持对齐方式）
 
 `Axeuh_UI_Ebook`(`s`,`x`,`y`,`a`);  
 `set`(`s`,`x`,`y`,`a`);
@@ -1123,7 +1148,8 @@ static Axeuh_UI_Ebook Ebook2("你好，这里是Axeuh",0,0,LEFT_CENTER);
 
 `set`(&`你的回调函数`);
 
-退出文本查看框时，如果设置了回调函数，则执行回调函数，没设置回调函数，则自动将父级面板的实例的输入开关打开，并关闭`Axeuh_UI_Ebook`的显示开关和输入开关，并将面板y动画偏移值`interlude_y` 设置成`-64`
+退出文本查看框时，如果设置了回调函数，则执行回调函数，没设置回调函数，则自动将父级面板的实例的输入开关打开，并关闭`Axeuh_UI_Ebook`的显示开关和输入开关，并将面板 y 动画偏移值`interlude_y` 设置成`-64`
+
 ```cpp
 Axeuh_UI_Ebook Ebook;
 void my_Callback(Axeuh_UI_Panel *p, Axeuh_UI *m)
@@ -1134,14 +1160,16 @@ void setup()
   Ebook.set(my_Callback);
 }
 ```
+
 回调函数类型  
 `typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);`
 
 ## Axeuh_UI_Keyboard（拼音键盘）
 
 ### 构建
+
 `MenuOption::AutolenString` `*Aoutput` 菜单选项文本  
-`String` `*output` 文本  
+`String` `*output` 文本
 
 `set`(`Aoutput`);  
 `set`(&`output`);
