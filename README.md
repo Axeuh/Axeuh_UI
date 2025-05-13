@@ -1,120 +1,3 @@
-# Arduino 交互式 UI 系统
-
-基于 Arduino 平台和 Axeuh_UI 库开发的综合界面系统，集成多级菜单、动态图形、3D 渲染和硬件交互功能。基于 U8G2 库实现高性能显示驱动。
-
-GIF 或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾 swap 选项
-(GIF 需要先转换成一帧一帧的图片)
-
-![系统演示](image.png)
-
-## 目录
-
-- [功能特性](#功能特性)
-- [硬件要求](#硬件要求)
-- [快速开始](#快速开始)
-  - [安装依赖](#安装依赖)
-  - [硬件连接](#硬件连接)
-  - [代码配置](#代码配置)
-- [系统架构](#系统架构)
-- [核心类说明](#核心类说明)
-- [使用示例](#使用示例)
-- [API 参考](#api参考)
-- [开发指南](#开发指南)
-- [常见问题](#常见问题)
-- [许可证](#许可证)
-
----
-
-## 功能特性
-
-### 核心功能
-
-- **多级菜单系统**
-
-  - 支持无限级菜单嵌套
-  - 动态菜单项生成（`MenuOption`结构）
-  - 图文混合显示（`PICTURE_TEXT`模式）
-  - 菜单动画过渡效果（渐进动画函数）
-
-- **图形渲染引擎**
-
-  - 128x64 OLED 显示驱动（U8G2 集成）
-  - GIF 动画支持（`Menu_gif`结构）
-  - 实时 3D 立方体渲染（`Axeuh_UI_Cube`类）
-
-- **交互组件库**
-
-  - 参数滑动调节条（`Axeuh_UI_slider`类）
-  - 中文拼音输入键盘（`Axeuh_UI_Keyboard`类）
-  - 状态栏组件（`Axeuh_UI_StatusBar`类）
-  - 弹窗（`Axeuh_UI_Panel`类）
-
-- **系统特性**
-  - 异步 UI 刷新（`menu_display_xtaskbegin`）
-  - 硬件中断优化（`xSemaphore`互斥锁）
-  - 动态内存管理（`CharLenMap`字符缓存）
-  - 低功耗模式支持
-
-### 扩展功能
-
-- 串口配置接口
-- 拼音键盘
-- 适配不同大小的屏幕
-- 屏幕旋转支持（0°/90°/180°/270°）
-- 适配不同字库（后续添加）
-
----
-
-## 硬件要求
-
-### 必需组件
-
-| 组件        | 规格要求          | 推荐型号     | 接口说明 |
-| ----------- | ----------------- | ------------ | -------- |
-| 主控板      | 支持 Arduino 框架 | ESP32 DevKit | -        |
-| OLED 显示屏 | 128x64 分辨率     | SSD1306      | SPI/I2C  |
-| 输入设备    | 5 向导航+确认键   | 无           | ADC      |
-
-### 推荐配置
-
-- **处理器性能**
-  - Flash 存储：≥​​512KB（用于存储图形资源）
-  - SRAM：≥48KB
-  - 时钟速度：≥72MHz（流畅动画）
-
----
-
-## 快速开始
-
-### 安装依赖
-
-#### PlatformIO
-
-```ini
-lib_deps =
-    https://github.com/Axeuh/Axeuh_UI_lib.git
-```
-
-#### Arduino IDE
-
-1. 通过库管理器安装 `U8g2`
-2. 下载[Axeuh_UI 库 ZIP](https://github.com/Axeuh/Axeuh_UI/archive/main.zip)
-3. 菜单栏：项目 > 加载库 > 添加.ZIP 库
-
-### 硬件连接
-
-```cpp
-/* 典型接线示例 (ESP32) */
-#define OLED_SDA  21  // I2C数据线
-#define OLED_SCL  22  // I2C时钟线
-#define ENC_A     34  // 摇杆x
-#define ENC_B     35  // 摇杆y
-#define ENC_SW    36  // 摇杆按键
-```
-
-### 示例
-
-```cpp
 /*
  * 基于Arduino的UI系统示例代码，使用Axeuh_UI库实现复杂界面交互
  * 包含矩阵键盘输入、OLED显示、多级菜单、动画、滑动条、3D立方体等多种功能
@@ -125,9 +8,15 @@ lib_deps =
 #include "gif.h"
 #include <Wire.h>
 // 硬件配置 --------------------------------------------------------
-// 矩阵键盘行列引脚定义
-// const int rowPins[4] = {33, 25, 26, 27};    // 行引脚
-// const int colPins[5] = {14, 12, 13, 15, 2}; // 列引脚
+
+#define OLED_MOSI  23
+#define OLED_CLK  18 
+#define OLED_CS  5 
+#define OLED_DC  17 
+#define OLED_Reset  16 
+#define HW_X     34  // 摇杆x
+#define HW_Y     35  // 摇杆y
+#define HW_SW    36  // 摇杆按键
 
 // 显示驱动配置 ----------------------------------------------------
 // 使用硬件SPI的OLED显示配置（参数：旋转方向, CS引脚, DC引脚, Reset引脚）
@@ -250,48 +139,16 @@ Axeuh_UI_Panel my_Panel_keyboard;
 // 输入处理函数 ----------------------------------------------------
 IN_PUT_Mode my_ui_input()
 {
-  if (!digitalRead(25))
+  if (!digitalRead(HW_SW))
     return SELECT; // 选中
-  else if (analogRead(35) >= 3995)
+  else if (analogRead(HW_Y) >= 3995)
     return DOWM; // 向下
-  else if (analogRead(35) <= 100)
+  else if (analogRead(HW_Y) <= 100)
     return UP; // 向上
-  else if (analogRead(34) >= 3995)
+  else if (analogRead(HW_X) >= 3995)
     return LEFT; // 向左
-  else if (analogRead(34) <= 100)
+  else if (analogRead(HW_X) <= 100)
     return RIGHT; // 向右
-
-  // for (int row = 0; row < 4; row++)
-  // {
-  //   pinMode(rowPins[row], OUTPUT);
-  //   digitalWrite(rowPins[row], LOW);
-  //   int col;
-  //   for (col = 0; col < 5; col++)
-  //   {
-  //     pinMode(colPins[col], INPUT_PULLUP);
-  //     if (digitalRead(colPins[col]) == LOW)
-  //     {
-  //       pinMode(colPins[col], INPUT_PULLUP); // Reset the column pin to INPUT mode
-  //       pinMode(rowPins[row], INPUT_PULLUP); // Reset the row pin to INPUT mode
-
-  //       if (keypadCharacters[row][col] == 10)
-  //         return UP;
-  //       else if (keypadCharacters[row][col] == 18)
-  //         return DOWM;
-  //       else if (keypadCharacters[row][col] == 14)
-  //         return SELECT;
-  //       else if (keypadCharacters[row][col] == 13)
-  //         return LEFT;
-  //       else if (keypadCharacters[row][col] == 15)
-  //         return RIGHT;
-  //       else
-  //         return STOP;
-  //     }
-  //   }
-  //   pinMode(colPins[col], INPUT_PULLUP); // Reset the column pin to INPUT mode
-  //   pinMode(rowPins[row], INPUT_PULLUP); // Reset the row pin to INPUT mode
-  // }
-
   return STOP; // 无输入
 }
 // 回调函数组 ------------------------------------------------------
@@ -474,9 +331,9 @@ void setup()
   Serial.begin(115200); // 初始化串口
   // Wire.begin(22, 21);
   // 按键（摇杆）引脚初始化
-  pinMode(35, INPUT);
-  pinMode(34, INPUT);
-  pinMode(25, INPUT_PULLUP);
+  pinMode(HW_Y, INPUT);
+  pinMode(HW_X, INPUT);
+  pinMode(HW_SW, INPUT_PULLUP);
 
   // UI系统初始化
   myui.begin();          // 初始化（必要！）
@@ -551,101 +408,3 @@ void loop()
 
   }
 }
-```
-
----
-
-## 系统架构
-
-### 组件框图
-
-```
-┌─────────────────┐
-│   用户输入       │←[硬件中断]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│  事件处理器      │→[消息队列]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│  UI渲染引擎      │←[帧同步]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│ 显示驱动(U8G2)   │→[SPI/I2C]
-└─────────────────┘
-```
-
-### 关键设计
-
-1. **事件驱动模型**
-
-   - 采集输入（`IN_PUT_Mode`枚举）
-   - 非阻塞式事件处理（`xTaskCreatePinnedToCore`）
-
-2. **资源管理**
-   - 预编译位图资源（`gif.h`）
-   - 动态内存分配策略（`expand()`函数）
-   - 对象复用池
-
----
-
-## 核心类说明
-
-### Axeuh_UI (主控类)
-
-| 方法      | 说明           |
-| --------- | -------------- |
-| `begin()` | 初始化 UI 系统 |
-| `set()`   | 添加菜单项     |
-
-### Axeuh_UI_Panel (面板容器)
-
-```cpp
-// 典型用法
-Axeuh_UI_Panel mainPanel;
-mainPanel.set(textMenu);  // 绑定文本菜单
-mainPanel.set_interlude(0,0,0,0); // 设置动画参数
-```
-
-### Axeuh_UI_TextMenu (文本菜单)
-
-```cpp
-MenuOption options[] = {
-  {"温度设置", 12, LEFT_CENTER, TEXT},
-  {"亮度调节", 12, LEFT_CENTER, TEXT}
-};
-Axeuh_UI_TextMenu menu(options, 2);
-```
-
-### 特殊功能类
-
-- `Axeuh_UI_Cube`：3D 立方体渲染
-- `Axeuh_UI_Keyboard`：中文输入法
-- `Axeuh_UI_slider`：参数滑动条
-
----
-
-## API 参考
-
-### 关键方法
-
-| 类                  | 方法              | 说明           |
-| ------------------- | ----------------- | -------------- |
-| `Axeuh_UI`          | `set_u8g2()`      | 绑定显示驱动   |
-| `Axeuh_UI_TextMenu` | `set_munber()`    | 设置当前选中项 |
-| `Axeuh_UI_Panel`    | `set_interlude()` | 设置动画参数   |
-
-### 回调函数类型
-
-```cpp
-typedef void (*textMenuCallback)(Axeuh_UI_Panel*, Axeuh_UI*);
-typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
-```
-
----
-
-## 许可证
-
-[Apache License v2](./LICENSE)
