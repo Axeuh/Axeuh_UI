@@ -570,11 +570,12 @@ void setup()
   myui.set(&cube);//添加立方体
 }
 ```
+
 ### 配置输入回调函数
 
 `set`(&`你的回调函数`);
 
-在每一帧都会运行这个函数。这是操作UI必要的函数。
+在每一帧都会运行这个函数。这是操作 UI 必要的函数。
 
 ```cpp
 Axeuh_UI_TextMenu mymenu;
@@ -592,7 +593,6 @@ void setup()
 ```cpp
 typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
 ```
-
 
 ### 添加`u8g2`
 
@@ -944,7 +944,11 @@ MenuOption myOptions[] = // 菜单信息
 Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 ```
 
-需要注意的是，菜单表单的选项文本在元数据中并不是`String`类型，而是`MenuOption::AutolenString`类型，使用上与`String`没有太大差异，但是在`MenuOption::AutolenString`类型下修改字符串会自动计算并保存选项宽度，如果将`MenuOption::AutolenString`类型传递或引用成`String`类型，修改`String`类型的字符串虽然菜单文本会发生改变，但不会自动更新选项的宽度，这会导致选项宽度和文本长度不匹配。
+需要注意的是，菜单表单的选项文本在元数据中并不是`String`类型，而是`MenuOption::AutolenString`类型。
+
+使用上与`String`没有太大差异，但是在`MenuOption::AutolenString`类型下修改字符串会自动计算并保存选项宽度。
+
+如果将`MenuOption::AutolenString`类型传递或引用成`String`类型，修改`String`类型的字符串虽然菜单文本会发生改变，但不会自动更新选项的宽度，这会导致选项宽度和文本长度不匹配。
 
 如果想更新选项宽度，可手动运行`Axeuh_UI_TextMenu`中的`init_text_more()`函数计算所有选项的宽度并保存。
 
@@ -958,15 +962,209 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 
 ### 构造及设置
 
-- `String` `name` 
-- `float` `*num`
-- `int16_t` `min`
-- `int16_t` `max`
-- `float` `unit_` = 1
+- `String` `name` 标题
+- `float` `*num` 修改值指针
+- `int16_t` `min` 最小值
+- `int16_t` `max` 最大值
+- `float` `unit_` 刻度单位，默认为 1
 
+`set`(`name`,&`*num`,`min`,`max`);  
+`set`(`name`,&`*num`,`min`,`max`,`unit_`);
 
+示例：
+
+```cpp
+int a=0;
+static Axeuh_UI_slider my_slider("设置a", &a, 0, 50, 0.5);
+```
+
+或者
+
+```cpp
+int a=0;
+static Axeuh_UI_slider my_slider;
+void setup()
+{
+  my_slider.set("设置a", &a, 0, 50, 0.5);
+}
+```
+
+### 你需要知道的一些事
+
+滑动条随面板高度 `h_now` 变化会有不同的形态  
+一共三种
 
 ---
+
+## Axeuh_UI_Cube（立方体）
+
+### 设置位置和大小
+
+- `int16_t` `cube_x` x 轴坐标
+- `int16_t` `cube_y` y 轴坐标
+- `float` `cube_scale` 立方体大小
+
+`set_cube`( `cube_x`, `cube_y`);  
+`set_cube`( `cube_x`, `cube_y`, `cube_scale`);  
+`set_scale`( `cube_scale`);设置大小
+
+`set_cube_now`( `cube_x`, `cube_y`, `cube_scale`);设置实时坐标位置和大小  
+
+```cpp
+static Axeuh_UI_Cube cube;
+
+cube.set_cube(10,10);
+cube.set_cube(10,10,15);
+cube.set_scale(15);
+
+cube.set_cube_now(10,10,15);
+```
+
+### 设置角度
+
+- `float` `angleX` x 轴角度
+- `float` `angleY` y 轴角度
+- `float` `angleZ` z 轴角度
+
+`set_cube_rotate_speed_x`(`angleX`);
+`set_cube_rotate_speed_y`(`angleY`);
+`set_cube_rotate_speed_z`(`angleZ`);
+`set_cube_rotate_speed`(`angleX`,`angleY`,`angleZ`);
+
+```cpp
+static Axeuh_UI_Cube cube;
+
+cube.set_cube_rotate_x(1);
+cube.set_cube_rotate_y(2);
+cube.set_cube_rotate_z(3);
+
+cube.set_cube_rotate(1,2,3);
+```
+
+### 设置角速度
+- `float` `angleX_speed` x 轴角速度
+- `float` `angleY_speed` y 轴角速度
+- `float` `angleZ_speed` z 轴角速度
+
+`set_cube_rotate_speed_x`(`angleX_speed`);
+`set_cube_rotate_speed_y`(`angleY_speed`);
+`set_cube_rotate_speed_z`(`angleZ_speed`);
+`set_cube_rotate_speed`(`angleX_speed`,`angleY_speed`,`angleZ_speed`);
+
+```cpp
+static Axeuh_UI_Cube cube;
+
+cube.set_cube_rotate_speed_x(0.01);
+cube.set_cube_rotate_speed_y(0.02);
+cube.set_cube_rotate_speed_z(0.03);
+
+cube.set_cube_rotate_speed(0.01,0.02,0.03);
+```
+
+### 获取参数
+
+`get_cube_x()` 返回类型是`int16_t`  
+`get_cube_y()` 返回类型是`int16_t`  
+`get_angleX()` 返回类型是`float`  
+`get_angleY()` 返回类型是`float`  
+`get_angleZ()` 返回类型是`float`  
+`get_angleX_speed()` 返回类型是`float`  
+`get_angleY_speed()` 返回类型是`float`  
+`get_angleZ_speed()` 返回类型是`float`  
+`get_scale()` 返回类型是`float`  
+
+```cpp
+static Axeuh_UI_Cube cube;
+
+cube.get_cube_x()
+cube.get_cube_y()
+cube.get_angleX()
+cube.get_angleY()
+cube.get_angleZ()
+cube.get_angleX_speed()
+cube.get_angleY_speed()
+cube.get_angleZ_speed()
+cube.get_scale()
+```
+
+## Axeuh_UI_StatusBar（状态栏）
+
+### 设置参数
+```cpp
+static Axeuh_UI_StatusBar bar;
+bar.set_y(10);
+bar.set_y_now(10);
+```
+
+状态栏随便写的，可根据自己需求改库文件，后续会添加自定义回调函数
+
+## Axeuh_UI_Ebook（文本查看框）
+
+### 构建
+
+`String` `s` 文本内容  
+`int16_t` `x` x坐标，默认为0  
+`int16_t` `y` y坐标，默认为0  
+`alignMode` `a` 对齐方式，默认为LEFT_CENTER（文本查看框暂不支持对齐方式） 
+
+`Axeuh_UI_Ebook`(`s`,`x`,`y`,`a`);  
+`set`(`s`,`x`,`y`,`a`);
+
+```cpp
+static Axeuh_UI_Ebook Ebook;
+Ebook.set("你好，这里是Axeuh");
+Ebook.set("你好，这里是Axeuh",0,0,LEFT_CENTER);
+
+static Axeuh_UI_Ebook Ebook1("你好，这里是Axeuh");
+static Axeuh_UI_Ebook Ebook2("你好，这里是Axeuh",0,0,LEFT_CENTER);
+```
+
+### 设置回调函数
+
+`set`(&`你的回调函数`);
+
+退出文本查看框时，如果设置了回调函数，则执行回调函数，没设置回调函数，则自动将父级面板的实例的输入开关打开，并关闭`Axeuh_UI_Ebook`的显示开关和输入开关，并将面板y动画偏移值`interlude_y` 设置成`-64`
+```cpp
+Axeuh_UI_Ebook Ebook;
+void my_Callback(Axeuh_UI_Panel *p, Axeuh_UI *m)
+{
+}
+void setup()
+{
+  Ebook.set(my_Callback);
+}
+```
+回调函数类型  
+`typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);`
+
+## Axeuh_UI_Keyboard（拼音键盘）
+
+### 构建
+`MenuOption::AutolenString` `*Aoutput` 菜单选项文本  
+`String` `*output` 文本  
+
+`set`(`Aoutput`);  
+`set`(&`output`);
+
+`Axeuh_UI_Keyboard`(`Aoutput`);  
+`Axeuh_UI_Keyboard`(&`output`);
+
+```cpp
+MenuOption myOption ={"hello",12};
+String acc="hello";
+Axeuh_UI_Keyboard mykeyboard;
+void setup()
+{
+  mykeyboard.set(myOption.name);
+  mykeyboard.set(&acc);
+  static Axeuh_UI_Keyboard mykeyboard1(myOption.name);
+  static Axeuh_UI_Keyboard mykeyboard2(&acc);
+}
+```
+
+### 重置动画
+
+`keyboard_init()`在进入拼音键盘前必须调用的函数，重置动画参数。
 
 ## 许可证
 
