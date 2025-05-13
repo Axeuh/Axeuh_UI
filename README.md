@@ -7,22 +7,6 @@ GIF 或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾 swap
 
 ![系统演示](image.png)
 
-## 目录
-
-- [功能特性](#功能特性)
-- [硬件要求](#硬件要求)
-- [快速开始](#快速开始)
-  - [安装依赖](#安装依赖)
-  - [硬件连接](#硬件连接)
-  - [代码配置](#代码配置)
-- [系统架构](#系统架构)
-- [核心类说明](#核心类说明)
-- [使用示例](#使用示例)
-- [API 参考](#api参考)
-- [开发指南](#开发指南)
-- [常见问题](#常见问题)
-- [许可证](#许可证)
-
 ---
 
 ## 功能特性
@@ -69,11 +53,11 @@ GIF 或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾 swap
 
 ### 必需组件
 
-| 组件        | 规格要求          | 推荐型号     | 接口说明 |
-| ----------- | ----------------- | ------------ | -------- |
-| 主控板      | 支持 Arduino 框架 | ESP32 DevKit | -        |
-| OLED 显示屏 | 128x64 分辨率     | SSD1306      | SPI/I2C  |
-| 输入设备    | 5 向导航+确认键   | 无           | ADC      |
+| 组件     | 规格要求          | 推荐型号     | 接口说明 |
+| -------- | ----------------- | ------------ | -------- |
+| 主控板   | 支持 Arduino 框架 | ESP32 DevKit | -        |
+| 显示屏   | 支持 U8G2         | SSD1306      | SPI/I2C  |
+| 输入设备 | 5 向导航+确认键   | 无           | ADC      |
 
 ### 推荐配置
 
@@ -311,7 +295,8 @@ void AllCallback_my_text2(Axeuh_UI_Panel *p, Axeuh_UI *m)
   {
     if (cube.get_scale() != 15) // 判断当前立方体大小是否为15
     {
-      p->text->set_menuOptions_name(1, "~ 设为右上角"); // 将当前面板的菜单的选项1的名称设置为“设为右上角”
+      p->text->set_menuOptions_name(1, "~ 设为右上角"); // 将当前面板的菜单的选项1的名称
+                                                       //设置为“设为右上角”
       cube.set_cube(64, 32, 15);                        // 设置立方体位置x为64，y为32和大小为15
     }
     else
@@ -529,61 +514,300 @@ void loop()
 
 ---
 
-## 系统架构
+# 系统架构
 
-### 组件框图
+## UI 结构示意
 
 ```
-┌─────────────────┐
-│   用户输入       │←[硬件中断]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│  事件处理器      │→[消息队列]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│  UI渲染引擎      │←[帧同步]
-└───────┬─────────┘
-        ↓
-┌─────────────────┐
-│ 显示驱动(U8G2)   │→[SPI/I2C]
-└─────────────────┘
+Axeuh_UI
+├── Axeuh_UI_Panel (首级面板)
+│ └── [Axeuh_UI_Panel*] (可无限递归的子面板)
+├── Axeuh_UI_Cube (立方体组件)
+└── Axeuh_UI_StatusBar (状态栏)
+
+Axeuh_UI_Panel
+├── [Axeuh_UI_Panel*] (子面板)
+├── Axeuh_UI_TextMenu (文本浏览窗口)
+├── Axeuh_UI_Ebook (菜单)
+├── Axeuh_UI_slider (滑动条)
+├── Axeuh_UI_Keyboard (拼音键盘)
+└── Menu_gif (图片)
 ```
-
-### 关键设计
-
-1. **事件驱动模型**
-
-   - 采集输入（`IN_PUT_Mode`枚举）
-   - 非阻塞式事件处理（`xTaskCreatePinnedToCore`）
-
-2. **资源管理**
-   - 预编译位图资源（`gif.h`）
-   - 动态内存分配策略（`expand()`函数）
-   - 对象复用池
 
 ---
 
-## 核心类说明
+# 核心类说明
 
-### Axeuh_UI (主控类)
+## Axeuh_UI
 
-| 方法      | 说明           |
-| --------- | -------------- |
-| `begin()` | 初始化 UI 系统 |
-| `set()`   | 添加菜单项     |
+### 初始化：
 
-### Axeuh_UI_Panel (面板容器)
+同时会初始化 u8g2，启用 UTF8 模式，设置字体`u8g2_font_wqy12_t_gb2312`，初始化滤波器。
 
 ```cpp
-// 典型用法
-Axeuh_UI_Panel mainPanel;
-mainPanel.set(textMenu);  // 绑定文本菜单
-mainPanel.set_interlude(0,0,0,0); // 设置动画参数
+begin();
 ```
 
-### Axeuh_UI_TextMenu (文本菜单)
+### 开始运行 UI：
+
+异步运行。有两个可以传递的参数：
+
+- `Memory_size`(`unsigned int`)分配内存大小，默认为 8192
+- `xCoreID`(`int`)分配的内核，默认为 0
+
+```cpp
+menu_display_xtaskbegin(Memory_size,xCoreID);
+```
+
+### 添加实例：
+
+`Axeuh_UI`是所有实例类的父类(`public`)，除了一些表单类之外。因此，所有实例都会受`Axeuh_UI`参数的改变而影响。以下是`Axeuh_UI`可以承载的实例：
+
+- `Axeuh_UI_Panel` 面板
+- `Axeuh_UI_Cube` 立方体
+- `Axeuh_UI_StatusBar` 状态栏
+
+```cpp
+Axeuh_UI myui();
+Axeuh_UI_Cube cube;
+void setup()
+{
+  myui.begin();
+  myui.set(&cube);//添加立方体
+}
+```
+
+### 添加`u8g2`
+
+作为基于 u8g2 的 UI 库，所以`Axeuh_UI`需要获得 u8g2 实例的指针，才能完成绘制工作，下面是添加 u8g2 指针的方法：
+
+方法一
+
+```cpp
+U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_Reset);
+Axeuh_UI myui(&u8g2);//直接传参
+```
+
+方法二
+
+```cpp
+U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_Reset);
+void setup()
+{
+  myui.begin();
+  myui.set_u8g2(&u8g2);//添加u8g2实例指针
+}
+```
+
+### 设置当前输入状态
+
+有效值为：`UP` `DOWN` `LEFT` `RIGHT` `SELECT` `STOP`
+
+```cpp
+set_IN_now(IN_PUT_Mode);
+```
+
+### 设置 FPS 上限
+
+类型为`uint16_t`，默认为 200hz
+
+```cpp
+set_fps_max(120);
+```
+
+### 获取当前输入状态
+
+返回值为`IN_PUT_Mode`：`UP` `DOWN` `LEFT` `RIGHT` `SELECT` `STOP`
+
+```cpp
+get_IN_now();
+```
+
+### 获取帧率上限
+
+返回为`uint16_t`
+
+```cpp
+get_fps_max();
+```
+
+### 获取当前帧率
+
+返回为`float`
+
+```cpp
+get_fps_max();
+```
+
+---
+
+## Axeuh_UI_Panel
+
+### 添加实例
+
+**`Axeuh_UI_Panel`是一个面板，需要承载一个实例，而实例则继承面板的参数，以下是可以承载的实例：**
+
+- `Axeuh_UI_TextMenu` 菜单
+- `Axeuh_UI_Ebook` 文本浏览窗口
+- `Axeuh_UI_slider` 滑动条
+- `Axeuh_UI_Keyboard` 拼音键盘
+- `Menu_gif` 图片
+- `Axeuh_UI_Panel` 面板
+
+你只需要`set`(&`你要添加的实例`);就行。
+
+例如：
+
+```cpp
+static Axeuh_UI_Panel my_Panel;
+static Axeuh_UI_Ebook my_Ebook("hello，这里是Axeuh");
+
+my_Panel.set(&my_menu);
+```
+
+**同时你也可以直接使用构造函数承载实例。**
+
+```cpp
+static Axeuh_UI_Ebook my_Ebook("hello，这里是Axeuh");
+static Axeuh_UI_Panel my_Panel(&my_Ebook);
+```
+
+**添加子面板也同样是`set`(&`你要添加的面板`);**
+
+```cpp
+static Axeuh_UI_Panel my_Panel1;
+static Axeuh_UI_Panel my_Panel2;
+my_Panel2.set(&my_Panel1);
+```
+
+或者
+
+```cpp
+static Axeuh_UI_Panel my_Panel1;
+static Axeuh_UI_Panel my_Panel2(&my_Panel1);
+```
+
+### 添加回调函数
+
+你只需要`set`(&`你的回调函数`);
+
+该函数会把回调函数传递给当前面板的实例，注意要先绑定实例再传递回调函数。
+
+```cpp
+Axeuh_UI_Ebook my_Ebook("hello，这里是Axeuh");
+Axeuh_UI_Panel my_Panel;
+void my_Callback(Axeuh_UI_Panel *p, Axeuh_UI *m)
+{
+}
+void setup()
+{
+  my_Panel2.set(&my_Ebook);
+  my_Panel.set(my_Callback);
+}
+```
+
+### 打开与关闭
+
+需要注意的是关闭显示开关，只有当动画结束，才会不显示该面板。显示开关和输入开关默认为开。
+
+```cpp
+of();
+off();
+```
+
+### 显示打开与关闭
+
+```cpp
+display_of();
+display_off();
+```
+
+### 输入打开与关闭
+
+```cpp
+Input_of();
+Input_off();
+```
+
+### 设置背景是否透明
+
+`set_lucency`(bool)，默认 0。
+
+- `0`：不透明，面板会完全盖在父级面板上
+- `1`：透明，面板会和屏幕上其他内容重合
+
+```cpp
+set_lucency(1);
+```
+
+### 设置面板位置和大小
+
+`x`为 x 轴，`y`为 y 轴，`w`为宽，`h`为高，`r`为圆角大小，圆角大小仅`Axeuh_UI_slider`生效。都是`int16_t`类型。
+
+- `set_x`(`x`);
+- `set_y`(`y`);
+- `set_h`(`h`);
+- `set_w`(`w`);
+- `set_r`(`r`);
+- `set_interface`(`x`,`y`,`w`,`h`,`r`);
+- `set_interface`(`x`,`y`,`w`,`h`);
+
+### 设置面板动画目前位置和大小
+
+`x_now`为 x 轴，`y_now`为 y 轴，`w_now`为宽，`h_now`为高，`r_now`为圆角大小，圆角大小仅`Axeuh_UI_slider`生效。都是`int16_t`类型。
+
+- `set_interface_now_x`(`x_now`);
+- `set_interface_now_y`(`y_now`);
+- `set_interface_now_h`(`h_now`);
+- `set_interface_now_w`(`w_now`);
+- `set_interface_now_r`(`r_now`);
+- `set_interface_now`(`x_now`,`y_now`,`w_now`,`h_now`,`r_now`);
+- `set_interface_now`(`x_now`,`y_now`,`w_now`,`h_now`);
+
+### 设置面板动画目前位置和大小
+
+`x`为 x 轴，`y`为 y 轴，`w`为宽，`h`为高，`r`为圆角大小，圆角大小仅`Axeuh_UI_slider`生效。都是`int16_t`类型。
+
+- `set_interlude_x`(`x`);
+- `set_interlude_y`(`y`);
+- `set_interlude_h`(`h`);
+- `set_interlude_w`(`w`);
+- `set_interlude_r`(`r`);
+- `set_interlude`(`x`,`y`,`w`,`h`,`r`);
+- `set_interlude`(`x`,`y`,`w`,`h`);
+
+### 获取面板位置和大小
+
+```cpp
+int16_t get_x() { return x; }
+int16_t get_y() { return y; }
+int16_t get_w() { return w; }
+int16_t get_h() { return h; }
+
+float get_x_now() { return x_now; }
+float get_y_now() { return y_now; }
+float get_w_now() { return w_now; }
+float get_h_now() { return h_now; }
+
+int16_t get_interlude_x() { return interlude_x; }
+int16_t get_interlude_y() { return interlude_y; }
+int16_t get_interlude_w() { return interlude_w; }
+int16_t get_interlude_h() { return interlude_h; }
+```
+
+### 获取当前文本菜单聚焦选项
+
+返回值为`int16_t`
+
+```cpp
+int key = get_textmenu_num_now();
+```
+
+---
+
+## Axeuh_UI_TextMenu (文本菜单)
+
+### 添加菜单内容
 
 ```cpp
 MenuOption options[] = {
@@ -593,23 +817,96 @@ MenuOption options[] = {
 Axeuh_UI_TextMenu menu(options, 2);
 ```
 
-### 特殊功能类
+或
 
-- `Axeuh_UI_Cube`：3D 立方体渲染
-- `Axeuh_UI_Keyboard`：中文输入法
-- `Axeuh_UI_slider`：参数滑动条
+```cpp
+MenuOption options[] = {
+  {"温度设置", 12, LEFT_CENTER, TEXT},
+  {"亮度调节", 12, LEFT_CENTER, TEXT}
+};
+Axeuh_UI_TextMenu menu;
+menu.set(options, 2);
+```
+
+### 修改当前所聚焦的选项
+
+会直接跳转到指定选项
+
+```cpp
+set_munber(2);
+```
+
+### 修改选项文本
+
+`set_menuOptions_name`(`n`，`name`);
+
+- `n`为选项索引
+- `name`为要设置的文本
+
+```cpp
+set_menuOptions_name(2,"hello");
+```
+
+### 设置选项偏移
+
+- `n`为选项索引
+- `num`为要设置的数值
+
+设置 x
+
+```cpp
+set_menuOptions_x(2,10);
+```
+
+设置 y
+
+```cpp
+set_menuOptions_y(2,10);
+```
 
 ---
 
-## API 参考
+## MenuOption（菜单表单类）
 
-### 关键方法
+### 初始化列表
 
-| 类                  | 方法              | 说明           |
-| ------------------- | ----------------- | -------------- |
-| `Axeuh_UI`          | `set_u8g2()`      | 绑定显示驱动   |
-| `Axeuh_UI_TextMenu` | `set_munber()`    | 设置当前选中项 |
-| `Axeuh_UI_Panel`    | `set_interlude()` | 设置动画参数   |
+- `String` `n` = "" 选项名称
+- `uint8_t` `h` = 12 选项高度，默认 12
+- `alignMode` `a` = `LEFT_CENTER`/`LEFT_CORNER`/`ALIGN_CENTER` 对齐方式，默认`LEFT_CENTER`（左中对齐）
+- `OptionMode` `m` = `TEXT`/`TEXT_MORE`/`PICTURE`/`PICTURE_TEXT` 选项模式，默认`TEXT`
+- `Menu_gif` `*g` = `nullptr` 图片指针，默认`nullptr`
+- `OptionistriggersAnimation` `tr` = `Trigger`/`No_Trigger` 是否触发动画（菜单跳转动画），默认`No_Trigger`（不触发动画）
+- `textMenuCallback` `cb` = `nullptr` 选项回调函数，默认`nullptr`
+- `OptionisSelectable` `is` = `Focused`/`No_Focusing` 选项是否可被选中，默认`Focused`（可被选中）
+
+`MenuOption` myOptions={`n`,`h`,`a`,`m`,`*g`,`tr`,`cb`,`is`};
+
+```cpp
+MenuOption myOptions[] = // 菜单信息
+    {
+        {"[ 首页 ]", 14, ALIGN_CENTER, TEXT, nullptr, No_Trigger, nullptr, No_Focusing},
+        {"Axeuh_UI 2.0", 14},
+        {"~ 设置fps上限", 14},
+        {"~ 当前选项高度", 12},
+        {"多行文本测试12345678", 24, LEFT_CENTER, TEXT_MORE},
+        {"荷马辛普森", 50, LEFT_CENTER, PICTURE_TEXT, &my_gif_1},
+        {"动图", 50, LEFT_CENTER, PICTURE_TEXT, &my_gif_2},
+        {"~ 设置立方体", 14},
+        {"设置", 20, LEFT_CENTER, PICTURE_TEXT, &my_gif_3, Trigger},
+        {"~ 重启", 14},
+        {"~ 键盘", 14, LEFT_CENTER, TEXT, nullptr, No_Trigger},
+};
+
+Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
+```
+
+需要注意的是，菜单表单的选项文本在元数据中并不是`String`类型，而是`MenuOption::AutolenString`类型，使用上与`String`没有太大差异，但是在`MenuOption::AutolenString`类型下修改字符串会自动计算并保存选项宽度，如果将`MenuOption::AutolenString`类型传递或引用成`String`类型，修改`String`类型的字符串虽然菜单文本会发生改变，但不会自动更新选项的宽度，这会导致选项宽度和文本长度不匹配。
+
+如果想更新选项宽度，可手动运行`Axeuh_UI_TextMenu`中的`init_text_more()`函数计算所有选项的宽度并保存。
+
+如果遇到本应该能够使用的`String`的函数未定义，可手动添加并实现`MenuOption::AutolenString`的`String`的函数
+
+为什么会存在`MenuOption::AutolenString`？，是因为在绘制 UI 中，实时计算选项长度会降低屏幕刷新速度。
 
 ### 回调函数类型
 
