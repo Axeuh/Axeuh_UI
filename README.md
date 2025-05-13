@@ -16,7 +16,7 @@ GIF 或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾 swap
 - **多级菜单系统**
 
   - 支持无限级菜单嵌套
-  - 动态菜单项生成（`MenuOption`结构）
+  - 动态菜单项生成（ `MenuOption` 结构）
   - 图文混合显示（`PICTURE_TEXT`模式）
   - 菜单动画过渡效果（渐进动画函数）
 
@@ -536,7 +536,7 @@ Axeuh_UI_Panel
 
 ### 初始化：
 
-同时会初始化 u8g2，启用 UTF8 模式，设置字体`u8g2_font_wqy12_t_gb2312`，初始化滤波器。
+同时会初始化 u8g2，启用 UTF8 模式，设置字体 `u8g2_font_wqy12_t_gb2312` ，初始化滤波器。
 
 ```cpp
 begin();
@@ -574,7 +574,7 @@ void setup()
 
 `set`(&`你的回调函数`);
 
-在每一帧都会运行这个函数。
+在每一帧都会运行这个函数。这是操作UI必要的函数。
 
 ```cpp
 Axeuh_UI_TextMenu mymenu;
@@ -950,18 +950,21 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 
 如果遇到本应该能够使用的`String`的函数未定义，可手动添加并实现`MenuOption::AutolenString`的`String`的函数
 
-为什么会存在`MenuOption::AutolenString`？，是因为在绘制 UI 中，实时计算选项长度会降低屏幕刷新速度。
+为什么会存在`MenuOption::AutolenString`？是因为在绘制 UI 中，实时计算选项长度会降低屏幕刷新速度。
 
 ---
 
 ## Axeuh_UI_slider（滑动条）
 
-### 回调函数类型
+### 构造及设置
 
-```cpp
-typedef void (*textMenuCallback)(Axeuh_UI_Panel*, Axeuh_UI*);
-typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
-```
+- `String` `name` 
+- `float` `*num`
+- `int16_t` `min`
+- `int16_t` `max`
+- `float` `unit_` = 1
+
+
 
 ---
 
