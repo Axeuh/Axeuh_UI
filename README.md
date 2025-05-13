@@ -92,7 +92,7 @@ GIF 或图片的转换在这里 https://javl.github.io/image2cpp/ 记得勾 swap
 
 ```ini
 lib_deps =
-    https://github.com/Axeuh/Axeuh_UI_lib.git
+    https://github.com/Axeuh/Axeuh_UI.git
 ```
 
 #### Arduino IDE
@@ -451,7 +451,6 @@ void setup()
 {
   Serial.begin(115200);                    // 初始化串口
   SPI.begin(OLED_CLK, OLED_MOSI, OLED_CS); // 初始化SPI
-  // Wire.begin(22, 21);
   // 按键（摇杆）引脚初始化
   pinMode(HW_Y, INPUT);
   pinMode(HW_X, INPUT);
