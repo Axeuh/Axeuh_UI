@@ -570,6 +570,29 @@ void setup()
   myui.set(&cube);//添加立方体
 }
 ```
+### 配置输入回调函数
+
+`set`(&`你的回调函数`);
+
+在每一帧都会运行这个函数。
+
+```cpp
+Axeuh_UI_TextMenu mymenu;
+void my_Callback(Axeuh_UI_Panel *p, Axeuh_UI *m)
+{
+}
+void setup()
+{
+  mymenu.set(my_Callback);
+}
+```
+
+回调函数类型
+
+```cpp
+typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
+```
+
 
 ### 添加`u8g2`
 
@@ -860,6 +883,31 @@ set_menuOptions_x(2,10);
 set_menuOptions_y(2,10);
 ```
 
+### 设置回调函数
+
+`set`(&`你的回调函数`);
+
+`Axeuh_UI_TextMenu`的回调函数在选中任意选项时执行。如果选中的选项有回调函数，则不会触发`Axeuh_UI_TextMenu`的回调函数，而是触发选项的回调函数。
+
+与`Axeuh_UI_Panel`中设置回调函数功能一致。
+
+```cpp
+Axeuh_UI_TextMenu mymenu;
+void my_Callback(Axeuh_UI_Panel *p, Axeuh_UI *m)
+{
+}
+void setup()
+{
+  mymenu.set(my_Callback);
+}
+```
+
+回调函数类型
+
+```cpp
+typedef void (*textMenuCallback)(Axeuh_UI_Panel*, Axeuh_UI*);
+```
+
 ---
 
 ## MenuOption（菜单表单类）
@@ -906,7 +954,7 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 
 ---
 
-## Axeuh_UI_slider
+## Axeuh_UI_slider（滑动条）
 
 ### 回调函数类型
 
