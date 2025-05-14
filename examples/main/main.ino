@@ -143,7 +143,7 @@ IN_PUT_Mode my_ui_input()
   if (!digitalRead(HW_SW))
     return SELECT; // 选中
   else if (analogRead(HW_Y) >= 3995)
-    return DOWM; // 向下
+    return DOWN; // 向下
   else if (analogRead(HW_Y) <= 100)
     return UP; // 向上
   else if (analogRead(HW_X) >= 3995)
