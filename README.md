@@ -976,7 +976,9 @@ Axeuh_UI_TextMenu my_menu(myOptions, sizeof(myOptions) / sizeof(myOptions[0]));
 `Menu_gif` `my_gif` = {`**frames`, `frameCount_`, `x`, `y`, `w`, `h`, `speed`, `startFrame`, `aPlay`, `hPlay`};
 
 ```cpp
-Menu_gif my_gif_1 = {icons_Homer_SimpsonallArray, 1, 5, 2, 50, 50, 30, 0, AutoPlay, Hide}; // 动图
+Menu_gif my_gif_1 = {icons_Homer_SimpsonallArray, 1, 5, 2, 50, 50, 30, 0, AutoPlay, Hide};
+
+Menu_gif my_gif_2 = {icons_Homer_SimpsonallArray2, 1, 5, 2, 50, 50};
 ```
 
 ---
@@ -1161,11 +1163,12 @@ void setup()
 }
 ```
 
-回调函数类型  
+回调函数类型
+
 ```cpp
 typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
 ```
-  
+
 ## Axeuh_UI_Keyboard（拼音键盘）
 
 ### 构建
@@ -1196,21 +1199,23 @@ void setup()
 
 `keyboard_init()`在进入拼音键盘前必须调用的函数，重置动画参数。
 
-
 ---
 
 # 回调函数说明
 
 有两种回调函数类型
+
 ```cpp
 typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
 typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
 ```
+
 `typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();`  
-这个回调函数用于UI的输入处理，函数需要返回`UP` `DOWN` `LEFT` `RIGHT` `SELECT` `STOP`。  
+这个回调函数用于 UI 的输入处理，函数需要返回`UP` `DOWN` `LEFT` `RIGHT` `SELECT` `STOP`。  
 判断逻辑由自己实现，在无输入下默认返回`STOP`。
 
 例如：
+
 ```cpp
 // 输入处理函数 ----------------------------------------------------
 IN_PUT_Mode my_ui_input()
@@ -1232,11 +1237,12 @@ IN_PUT_Mode my_ui_input()
 `typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);`  
 这个函数是实现界面的响应所要执行的操作。例如菜单选中选项会执行该回调函数，我们通过判断当前的选项而执行相应的选项操作：切换菜单、进入子菜单、或者执行其他操作
 
-其中`Axeuh_UI_Panel *p`是当前面板，使用`*p`可以直接操作和修改当前的面板，例如打开或关闭，或者添加子面板，或者替换实例。  
+其中`Axeuh_UI_Panel *p`是当前面板，使用`*p`可以直接操作和修改当前的面板，例如打开或关闭，或者添加子面板，或者替换实例。
 
-其中`Axeuh_UI *m`是整个UI框架类指针，可以修改整个框架的UI参数，例如fps上限。
+其中`Axeuh_UI *m`是整个 UI 框架类指针，可以修改整个框架的 UI 参数，例如 fps 上限。
 
 例如：
+
 ```cpp
 void AllCallback_my_Popup_text1(Axeuh_UI_Panel *p, Axeuh_UI *m)
 {
