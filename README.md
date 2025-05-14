@@ -1162,8 +1162,10 @@ void setup()
 ```
 
 回调函数类型  
-`typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);`
-
+```cpp
+typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
+```
+  
 ## Axeuh_UI_Keyboard（拼音键盘）
 
 ### 构建
@@ -1194,6 +1196,125 @@ void setup()
 
 `keyboard_init()`在进入拼音键盘前必须调用的函数，重置动画参数。
 
-## 许可证
+
+---
+
+# 回调函数说明
+
+有两种回调函数类型
+```cpp
+typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
+typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
+```
+`typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();`  
+这个回调函数用于UI的输入处理，函数需要返回`UP` `DOWN` `LEFT` `RIGHT` `SELECT` `STOP`。  
+判断逻辑由自己实现，在无输入下默认返回`STOP`。
+
+例如：
+```cpp
+// 输入处理函数 ----------------------------------------------------
+IN_PUT_Mode my_ui_input()
+{
+  if (!digitalRead(HW_SW))
+    return SELECT; // 选中
+  else if (analogRead(HW_Y) >= 3995)
+    return DOWN; // 向下
+  else if (analogRead(HW_Y) <= 100)
+    return UP; // 向上
+  else if (analogRead(HW_X) >= 3995)
+    return LEFT; // 向左
+  else if (analogRead(HW_X) <= 100)
+    return RIGHT; // 向右
+  return STOP;    // 无输入
+}
+```
+
+`typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);`  
+这个函数是实现界面的响应所要执行的操作。例如菜单选中选项会执行该回调函数，我们通过判断当前的选项而执行相应的选项操作：切换菜单、进入子菜单、或者执行其他操作
+
+其中`Axeuh_UI_Panel *p`是当前面板，使用`*p`可以直接操作和修改当前的面板，例如打开或关闭，或者添加子面板，或者替换实例。  
+
+其中`Axeuh_UI *m`是整个UI框架类指针，可以修改整个框架的UI参数，例如fps上限。
+
+例如：
+```cpp
+void AllCallback_my_Popup_text1(Axeuh_UI_Panel *p, Axeuh_UI *m)
+{
+  int key = 0;
+  key = p->get_textmenu_num_now();//获取菜单当前选中的选项
+
+  if (key == 0)
+  {
+  }
+  else if (key == 1)
+  {
+    // 此选项是弹出文本显示窗口
+    p->set(&my_Panel_2);//添加子面板
+    my_Panel_2.of();
+    my_Panel_2.set_interlude(0, 0, 0, 0);
+    p->Input_off();
+  }
+  else if (key == 2)
+  {
+    p->set(&my_Panel_slider);
+    p->Input_off();
+    my_Panel_slider.slider_->set("fps上限", &m->fps_max, 10, 240);
+    my_Panel_slider.of();
+    my_Panel_slider.set_interlude(0, 0, 0, 0);
+  }
+  else if (key == 3)
+  {
+    p->set(&my_Panel_slider);
+    p->Input_off();
+    my_Panel_slider.slider_->set("当前选项高度", (int *)&my_text_1_Panel.menuOptions[3].height, 10, 50);
+    my_Panel_slider.of();
+    my_Panel_slider.set_interlude(0, 0, 0, 0);
+  }
+  else if (key == 4)
+  {
+    // 此选项改变my_Panel_text的菜单界面的宽度和x坐标
+    if (my_Panel_text.get_w() == 64)
+    {
+      my_Panel_text.set_w(128);
+      my_Panel_text.set_x(0);
+    }
+    else
+    {
+      my_Panel_text.set_w(64);
+      my_Panel_text.set_x(64);
+    }
+  }
+  else if (key == 7)
+  {
+    // 此选项是弹出子级面板，设置立方体参数
+    p->set(&my_Panel_1);
+    my_Panel_1.set_interlude_y(0);
+    my_Panel_1.of();
+    p->Input_off(); // 关闭当前面板的按键输入
+  }
+  else if (key == 8)
+  {
+    // 此选项是切换当前菜单面板，切换到设置界面
+    m->set(&my_Panel_4);
+    my_Panel_4.set_interface_now(p); // 继承当前面板的实时坐标信息
+    my_Panel_4.set_interlude_w(0);   // 重置宽度动画偏移值
+    my_Panel_4.of();
+  }
+  else if (key == 9)
+  {
+    ESP.restart(); // 重启
+  }
+  else if (key == 10)
+  {                                                      // 此选项是打开键盘
+    p->set(&my_Panel_keyboard);                          // 添加了有键盘实例的面板为当前面板的子面板
+    my_Panel_keyboard.keyboard->keyboard_init();         // 初始化键盘（实际上将动画偏移值重置）
+    my_Panel_keyboard.of();                              // 启动
+    my_Panel_keyboard.keyboard->set(myOptions1[1].name); // 设置要修改的字符串指针，（当前设置的是选项1的文本）
+    p->Input_off();
+  }
+}
+```
+
+# 许可证
 
 [Apache License v2](./LICENSE)
