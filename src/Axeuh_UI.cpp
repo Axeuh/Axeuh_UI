@@ -195,7 +195,7 @@ void Axeuh_UI_Ebook::drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh
                 else
                     page_y = 0;
             }
-            else if (IN == DOWM)
+            else if (IN == DOWN)
             {
                 if (page_y - interface_h_ > -y_)
                     page_y -= 12;
@@ -597,7 +597,7 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
 
         Serial.println();*/
 
-        if (in_put_now == DOWM)
+        if (in_put_now == DOWN)
         {
             if (Box_opt.isSelectable == No_Focusing)
             {
@@ -845,7 +845,7 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
 
         if (*if_Input)
         {
-            if (IN == UP || IN == DOWM)
+            if (IN == UP || IN == DOWN)
             {
                 if (IN == UP && !handleInput && time_ == 0)
                 {
@@ -853,9 +853,9 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
                     if (meun_number_now > 0)
                         meun_number_now--;
                 }
-                else if (IN == DOWM && !handleInput && time_ == 0)
+                else if (IN == DOWN && !handleInput && time_ == 0)
                 {
-                    in_put_now = DOWM;
+                    in_put_now = DOWN;
                     if (meun_number_now < menuOptions_index - 1)
                         meun_number_now++;
                 }
@@ -1345,7 +1345,7 @@ void Axeuh_UI_Keyboard::drawKeyboard(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P,
                     {
                         key.text_now = pinyin_MEUN[keyboard_now].up;
                     }
-                    else if (IN == DOWM) // 向下
+                    else if (IN == DOWN) // 向下
                     {
                         key.text_now = pinyin_MEUN[keyboard_now].down;
                     }
@@ -1549,7 +1549,7 @@ void Axeuh_UI::menu_display() // 绘制函数
         const uint32_t elapsed = micros() - frameStart; // 本帧已耗时
         int32_t remaining = 1000000 / fps_max - elapsed;
         remaining += fps_speed_; // 误差补偿
-        if (remaining > 0)//限制最大帧率，减少CPU占用
+        if (remaining > 0)       // 限制最大帧率，减少CPU占用
         {
             if (fps > fps_max)
                 fps_speed_++;
@@ -1562,7 +1562,7 @@ void Axeuh_UI::menu_display() // 绘制函数
             }
             else
             {
-                delay(1);//最低1ms防止触发看门狗
+                delay(1); // 最低1ms防止触发看门狗
             }
         }
         else
