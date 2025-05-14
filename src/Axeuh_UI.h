@@ -129,7 +129,7 @@ public:
 enum IN_PUT_Mode
 {
     UP,
-    DOWM,
+    DOWN,
     LEFT,
     RIGHT,
     SELECT,
@@ -213,8 +213,8 @@ struct Menu_gif
              uint16_t frameCount_ = 0,
              uint16_t xx = 0,
              uint16_t yy = 0,
-             uint16_t width = 16,
-             uint16_t height = 16,
+             uint16_t width,
+             uint16_t height,
              uint8_t speed = 100,
              uint16_t startFrame = 0,
              OptiongifMode1 aPlay = AutoPlay,
@@ -748,7 +748,7 @@ public:
         xSemaphoreTake(xMutex, 100);
         if (num > meun_number_now && num < menuOptions_index)
         {
-            in_put_now = DOWM;
+            in_put_now = DOWN;
             meun_number_now = num;
         }
         else if (num < meun_number_now && num >= 0)
@@ -768,7 +768,7 @@ public:
 
         if (num > meun_number_now && num < menuOptions_index - 1)
         {
-            in_put_now = DOWM;
+            in_put_now = DOWN;
             meun_number_now = num;
         }
         else if (num < meun_number_now && num > 0)
