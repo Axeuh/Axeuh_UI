@@ -4,6 +4,13 @@
 CharLenMap Axeuh_UI::len_c;
 SimpleKalmanFilter Axeuh_UI::fps_filter;
 
+MenuOption Axeuh_error[] = // 菜单信息
+    {
+        // {"[ 警告！ ]", 14, ALIGN_CENTER, TEXT, nullptr, No_Trigger, nullptr, No_Focusing},
+        {"空指针！", 14},
+};
+
+
 void Axeuh_UI_Ebook::drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m)
 {
     if (*if_display || !get_animation_all_isok())
@@ -211,7 +218,7 @@ void Axeuh_UI_Ebook::drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh
                 if (handleInput)
                 {
                     handleInput = 0;
-
+                    *trigger = 1;
                     xSemaphoreGive(xMutex);
                     staticCallback(this, P, m);
                     xSemaphoreTake(xMutex, 100);
@@ -315,6 +322,16 @@ void Axeuh_UI_Panel::drawPanel(U8G2 *D, Axeuh_UI *m, IN_PUT_Mode IN)
         else if (keyboard != nullptr)
             keyboard->drawKeyboard(D, IN, this, m);
 #endif
+        else if (Panel_draw != nullptr)
+        {
+
+            Panel_draw(D, IN, this, m);
+            animation(&x_now, float(interlude_x + x), m->fps / 3 * 5);
+            animation(&y_now, float(interlude_y + y), m->fps / 3 * 5);
+            animation(&w_now, float(interlude_w + w), m->fps / 3 * 5);
+            animation(&h_now, float(interlude_h + h), m->fps / 3 * 5);
+            animation(&r_now, r, m->fps / 3 * 5);
+        }
 
         if (Panel_ != nullptr)
         {
@@ -330,6 +347,11 @@ void Axeuh_UI_TextMenu::draw_MenuOption(U8G2 *D, unsigned long currentMillis, in
     for (uint8_t i = 0; i < menuOptions_index; i++)
     {
         // 获取当前选项
+        if (&menuOptions[i] == nullptr)
+        {
+            Serial.println("Axeuh_UI_TextMenu选项指针越界！");
+            continue;
+        }
         MenuOption &opt = menuOptions[i];
 
         int align_x = 0, align_y = 0;
@@ -455,85 +477,87 @@ void Axeuh_UI_TextMenu::draw_MenuOption(U8G2 *D, unsigned long currentMillis, in
         }
         else if (opt.mode == PICTURE)
         {
-            if (interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now > *y_now - opt.gif->h &&
-                interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now < *y_now + *h_now + opt.gif->h)
-            {
-                if (opt.gif->Play_hide == Hide)
+            if (opt.gif != nullptr)
+                if (interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now > *y_now - opt.gif->h &&
+                    interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now < *y_now + *h_now + opt.gif->h)
                 {
-                    if (i != meun_number_now)
-                        opt.gif->x_ = -opt.gif->w - opt.gif->x;
-                    else
-                        opt.gif->x_ = 0;
-                }
-                if (currentMillis - opt.gif->previousMillis >= opt.gif->frameCount_speed)
-                {
-                    int8_t frameCount_add = (currentMillis - opt.gif->previousMillis) / opt.gif->frameCount_speed;
-                    int8_t gif_newframeCount = (opt.gif->frameCount_now + frameCount_add) % opt.gif->frameCount;
-                    if (opt.gif->Autoplay == ManualPlay)
+                    if (opt.gif->Play_hide == Hide)
                     {
-                        if (meun_number_now == i ||
-                            opt.gif->frameCount_now != opt.gif->frameCount_start)
+                        if (i != meun_number_now)
+                            opt.gif->x_ = -opt.gif->w - opt.gif->x;
+                        else
+                            opt.gif->x_ = 0;
+                    }
+                    if (currentMillis - opt.gif->previousMillis >= opt.gif->frameCount_speed)
+                    {
+                        int8_t frameCount_add = (currentMillis - opt.gif->previousMillis) / opt.gif->frameCount_speed;
+                        int8_t gif_newframeCount = (opt.gif->frameCount_now + frameCount_add) % opt.gif->frameCount;
+                        if (opt.gif->Autoplay == ManualPlay)
+                        {
+                            if (meun_number_now == i ||
+                                opt.gif->frameCount_now != opt.gif->frameCount_start)
+                                opt.gif->frameCount_now = gif_newframeCount;
+                        }
+                        else
+                        {
                             opt.gif->frameCount_now = gif_newframeCount;
+                        }
+                        opt.gif->previousMillis = currentMillis;
                     }
-                    else
-                    {
-                        opt.gif->frameCount_now = gif_newframeCount;
-                    }
+                    D->setBitmapMode(1);
+                    D->drawXBMP(interface_text_x_now + *x_now + opt.gif->x + opt.gif->x_now,
+                                interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now,
+                                opt.gif->w,
+                                opt.gif->h,
+                                opt.gif->jpg[opt.gif->frameCount_now]);
+                    D->setBitmapMode(0);
+                }
+                else
+                {
                     opt.gif->previousMillis = currentMillis;
                 }
-                D->setBitmapMode(1);
-                D->drawXBMP(interface_text_x_now + *x_now + opt.gif->x + opt.gif->x_now,
-                            interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now,
-                            opt.gif->w,
-                            opt.gif->h,
-                            opt.gif->jpg[opt.gif->frameCount_now]);
-                D->setBitmapMode(0);
-            }
-            else
-            {
-                opt.gif->previousMillis = currentMillis;
-            }
         }
         else if (opt.mode == PICTURE_TEXT)
         {
-            if (interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now > *y_now - opt.gif->h &&
-                interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now < *y_now + *h_now + opt.gif->h)
-            {
-                if (opt.gif->Play_hide == Hide)
+            if (opt.gif != nullptr)
+                if (interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now > *y_now - opt.gif->h &&
+                    interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now < *y_now + *h_now + opt.gif->h)
                 {
-                    if (i != meun_number_now)
-                        opt.gif->x_ = -opt.gif->w - opt.gif->x;
-                    else
-                        opt.gif->x_ = 0;
-                }
-                if (currentMillis - opt.gif->previousMillis >= opt.gif->frameCount_speed)
-                {
-                    int frameCount_add = (currentMillis - opt.gif->previousMillis) / opt.gif->frameCount_speed;
-                    int gif_newframeCount = (opt.gif->frameCount_now + frameCount_add) % opt.gif->frameCount;
-                    if (opt.gif->Autoplay == ManualPlay)
+                    if (opt.gif->Play_hide == Hide)
                     {
-                        if (meun_number_now == i ||
-                            opt.gif->frameCount_now != opt.gif->frameCount_start)
+                        if (i != meun_number_now)
+                            opt.gif->x_ = -opt.gif->w - opt.gif->x;
+                        else
+                            opt.gif->x_ = 0;
+                    }
+                    if (currentMillis - opt.gif->previousMillis >= opt.gif->frameCount_speed)
+                    {
+                        int frameCount_add = (currentMillis - opt.gif->previousMillis) / opt.gif->frameCount_speed;
+                        int gif_newframeCount = (opt.gif->frameCount_now + frameCount_add) % opt.gif->frameCount;
+                        if (opt.gif->Autoplay == ManualPlay)
+                        {
+                            if (meun_number_now == i ||
+                                opt.gif->frameCount_now != opt.gif->frameCount_start)
+                                opt.gif->frameCount_now = gif_newframeCount;
+                        }
+                        else
+                        {
                             opt.gif->frameCount_now = gif_newframeCount;
+                        }
+                        opt.gif->previousMillis = currentMillis;
                     }
-                    else
-                    {
-                        opt.gif->frameCount_now = gif_newframeCount;
-                    }
+                    D->setBitmapMode(1);
+                    D->drawXBMP(interface_text_x_now + *x_now + opt.gif->x + opt.gif->x_now,
+                                interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now,
+                                opt.gif->w,
+                                opt.gif->h,
+                                opt.gif->jpg[opt.gif->frameCount_now]);
+                    D->setBitmapMode(0);
+                }
+                else
+                {
                     opt.gif->previousMillis = currentMillis;
                 }
-                D->setBitmapMode(1);
-                D->drawXBMP(interface_text_x_now + *x_now + opt.gif->x + opt.gif->x_now,
-                            interface_text_y_now + *y_now + opt.gif->y + opt.gif->y_now + text_height_now,
-                            opt.gif->w,
-                            opt.gif->h,
-                            opt.gif->jpg[opt.gif->frameCount_now]);
-                D->setBitmapMode(0);
-            }
-            else
-            {
-                opt.gif->previousMillis = currentMillis;
-            }
 
             switch (opt.align)
             {
@@ -549,7 +573,9 @@ void Axeuh_UI_TextMenu::draw_MenuOption(U8G2 *D, unsigned long currentMillis, in
             default:
                 break;
             }
-            int16_t drawtext_x = *x_now + align_x + opt.gif->w + opt.gif->x + 2;
+            int16_t drawtext_x = *x_now + align_x + 2;
+            if (opt.gif != nullptr)
+                drawtext_x += opt.gif->w + opt.gif->x;
             int16_t drawtext_y = font_offset_y + text_height_now + align_y + *y_now + 2;
             if (interface_text_y_now + drawtext_y + opt.y > *y_now &&
                 interface_text_y_now + drawtext_y + opt.y < *y_now + *h_now + 12)
@@ -569,8 +595,14 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
     {
         unsigned long currentMillis = millis();
 
-        int text_height_now = 0;
 
+        if (menuOptions == nullptr)
+        {
+            menuOptions = Axeuh_error;
+            menuOptions_index = 1;
+        }
+
+        int text_height_now = 0;
         MenuOption &Box_opt = menuOptions[meun_number_now];
 
         int16_t interface_x_ = *interlude_x + *x; // 页面当前位置
@@ -822,8 +854,11 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
             MenuOption &Box_opt_jpg = menuOptions[i];
             if (Box_opt_jpg.mode == PICTURE || Box_opt_jpg.mode == PICTURE_TEXT)
             {
-                animation(&Box_opt_jpg.gif->x_now, Box_opt_jpg.gif->x_, m->fps / 3 * 5);
-                animation(&Box_opt_jpg.gif->y_now, Box_opt_jpg.gif->y_, m->fps / 3 * 5);
+                if (Box_opt_jpg.gif != nullptr)
+                {
+                    animation(&Box_opt_jpg.gif->x_now, Box_opt_jpg.gif->x_, m->fps / 3 * 5);
+                    animation(&Box_opt_jpg.gif->y_now, Box_opt_jpg.gif->y_, m->fps / 3 * 5);
+                }
             }
         }
 
@@ -890,6 +925,7 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
             {
                 if (handleInput && get_animation_interface_isok())
                 {
+                    *trigger = 1;
                     handleInput = 0;
                     xSemaphoreGive(xMutex);
                     staticCallback(this, P, m);
@@ -969,15 +1005,26 @@ void Axeuh_UI_slider::drawSlider(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axe
 
             if (*if_Input)
             {
-                if (IN == LEFT || IN == RIGHT)
+                if (IN == LEFT || IN == RIGHT || IN == UP || IN == DOWN)
                 {
                     if (holdStartTime == 0)
                     {
                         // 单次增减1
-                        if (IN == LEFT)
-                            num -= 1 * unit;
+                        if (m->hardware_ == hardware_5)
+                        {
+                            if (IN == LEFT)
+                                num -= 1 * unit;
+                            else if (IN == RIGHT)
+                                num += 1 * unit;
+                        }
                         else
-                            num += 1 * unit;
+                        {
+                            if (IN == DOWN)
+                                num -= 1 * unit;
+                            else if (IN == UP)
+                                num += 1 * unit;
+                        }
+
                         num = constrain(num, s.min, s.max);
 
                         holdStartTime = millis();
@@ -1000,10 +1047,20 @@ void Axeuh_UI_slider::drawSlider(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axe
                         if (time_ == 0)
                         {
                             // 每次仅增减1
-                            if (IN == LEFT)
-                                num -= (1 + num_speed_up) * unit;
+                            if (m->hardware_ == hardware_5)
+                            {
+                                if (IN == LEFT)
+                                    num -= (1 + num_speed_up) * unit;
+                                else if (IN == RIGHT)
+                                    num += (1 + num_speed_up) * unit;
+                            }
                             else
-                                num += (1 + num_speed_up) * unit;
+                            {
+                                if (IN == DOWN)
+                                    num -= (1 + num_speed_up) * unit;
+                                else if (IN == UP)
+                                    num += (1 + num_speed_up) * unit;
+                            }
                             num = constrain(num, s.min, s.max);
 
                             // 动态计算间隔时间（6-keyboard_isok_number）
@@ -1038,11 +1095,17 @@ void Axeuh_UI_slider::drawSlider(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axe
 
                     if (handleInput)
                     {
-                        **return_num_pointer = 1;
+                        *trigger = 1;
+                        if (return_num_pointer != nullptr)
+                            **return_num_pointer = 1;
                         handleInput = 0;
                         *if_display = 0;
                         *if_Input = 0;
-                        *interlude_y = -64;
+                        // *interlude_y = -64;
+                        if (callback != nullptr)
+                            callback(P, m); // 如果有回调函数，则触发，没有则触发开关
+                        else
+                            *interlude_y = -64;
                         //*y = -64;
                     }
                 }
@@ -1135,6 +1198,11 @@ void Axeuh_UI_Cube::drawCube(U8G2 *D, Axeuh_UI *m)
     xSemaphoreGive(xMutex);
 }
 #ifdef CHINESE_KEYBOARD
+
+void Axeuh_UI_Keyboard::SELECT_(String output_str, String mystring, const char **key_arr)
+{
+}
+
 void Axeuh_UI_Keyboard::drawKeyboard(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m) // 史山
 {
     if (*if_display || !get_animation_interface_isok())
@@ -1341,144 +1409,302 @@ void Axeuh_UI_Keyboard::drawKeyboard(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P,
                 if (IN != STOP)
                 {
                     time_ = 5;
-                    if (IN == UP) // 向上
+
+                    if (m->hardware_ == hardware_5)
                     {
-                        key.text_now = pinyin_MEUN[keyboard_now].up;
-                    }
-                    else if (IN == DOWN) // 向下
-                    {
-                        key.text_now = pinyin_MEUN[keyboard_now].down;
-                    }
-                    else if (IN == LEFT) // 左
-                    {
-                        key.text_now = pinyin_MEUN[keyboard_now].left;
-                    }
-                    else if (IN == RIGHT) // 右
-                    {
-                        key.text_now = pinyin_MEUN[keyboard_now].right;
-                    }
-                    else if (IN == SELECT) // 确认
-                    {
-                        if (key.text_now == "input")
+                        if (IN == UP) // 向上
                         {
+                            key.text_now = pinyin_MEUN[keyboard_now].up;
                         }
-                        else if (key.text_now == "daxie")
+                        else if (IN == DOWN) // 向下
                         {
-                            key.capslk = !key.capslk;
+                            key.text_now = pinyin_MEUN[keyboard_now].down;
                         }
-                        else if (key.text_now == "fu")
+                        else if (IN == LEFT) // 左
                         {
+                            key.text_now = pinyin_MEUN[keyboard_now].left;
                         }
-                        else if (key.text_now == "shu")
+                        else if (IN == RIGHT) // 右
                         {
-                            num_of = !num_of;
+                            key.text_now = pinyin_MEUN[keyboard_now].right;
                         }
-                        else if (key.text_now == "up")
+                        else if (IN == SELECT)
                         {
-                            if (CE_of)
-                                if (CE_num > 0)
-                                    CE_num--;
-                        }
-                        else if (key.text_now == "text1")
-                        {
-                            output_str += mystring.substring(CE_num * 3, CE_num * 3 + 3);
-                            CE_num = 0;
-                            CE_num_max = 0;
-                            CE_out = "";
-                        }
-                        else if (key.text_now == "text2")
-                        {
-                            output_str += mystring.substring((CE_num + 1) * 3, (CE_num + 1) * 3 + 3);
-                            CE_num = 0;
-                            CE_num_max = 0;
-                            CE_out = "";
-                        }
-                        else if (key.text_now == "text3")
-                        {
-                            output_str += mystring.substring((CE_num + 2) * 3, (CE_num + 2) * 3 + 3);
-                            CE_num = 0;
-                            CE_num_max = 0;
-                            CE_out = "";
-                        }
-                        else if (key.text_now == "down")
-                        {
-                            if (CE_of)
-                                if (CE_num + 3 < CE_num_max)
-                                    CE_num++;
-                        }
-                        else if (key.text_now == "CE")
-                        {
-                            CE_of = !CE_of;
-                            output_str += CE_out;
-                            CE_out = "";
-                        }
-                        else if (key.text_now == "Enter")
-                        {
-                            if (CE_out == "")
+                            if (key.text_now == "input")
                             {
-                                handleInput = 1;
                             }
-                            else
+                            else if (key.text_now == "daxie")
                             {
+                                key.capslk = !key.capslk;
+                            }
+                            else if (key.text_now == "fu")
+                            {
+                            }
+                            else if (key.text_now == "shu")
+                            {
+                                num_of = !num_of;
+                            }
+                            else if (key.text_now == "up")
+                            {
+                                if (CE_of)
+                                    if (CE_num > 0)
+                                        CE_num--;
+                            }
+                            else if (key.text_now == "text1")
+                            {
+                                output_str += mystring.substring(CE_num * 3, CE_num * 3 + 3);
+                                CE_num = 0;
+                                CE_num_max = 0;
+                                CE_out = "";
+                            }
+                            else if (key.text_now == "text2")
+                            {
+                                output_str += mystring.substring((CE_num + 1) * 3, (CE_num + 1) * 3 + 3);
+                                CE_num = 0;
+                                CE_num_max = 0;
+                                CE_out = "";
+                            }
+                            else if (key.text_now == "text3")
+                            {
+                                output_str += mystring.substring((CE_num + 2) * 3, (CE_num + 2) * 3 + 3);
+                                CE_num = 0;
+                                CE_num_max = 0;
+                                CE_out = "";
+                            }
+                            else if (key.text_now == "down")
+                            {
+                                if (CE_of)
+                                    if (CE_num + 3 < CE_num_max)
+                                        CE_num++;
+                            }
+                            else if (key.text_now == "CE")
+                            {
+                                CE_of = !CE_of;
                                 output_str += CE_out;
                                 CE_out = "";
                             }
-                        }
-                        else if (key.text_now == "tuige")
-                        {
-                            // 检查字符串是否非空
-                            // 删除最后一个字符
-                            if (CE_out == "")
+                            else if (key.text_now == "Enter")
                             {
-                                if ((output_str).length() > 0)
-                                    if (isChineseChar((output_str).charAt((output_str).length() - 3)))
-                                        (output_str).remove((output_str).length() - 3);
-                                    else
-                                        (output_str).remove((output_str).length() - 1);
+                                if (CE_out == "")
+                                {
+                                    handleInput = 1;
+                                }
+                                else
+                                {
+                                    output_str += CE_out;
+                                    CE_out = "";
+                                }
                             }
-                            else if (CE_out.length() > 0)
-                                CE_out.remove(CE_out.length() - 1);
-                        }
-                        else if (key.text_now == " ")
-                        {
-                            if (!CE_of)
-                                output_str += " ";
+                            else if (key.text_now == "tuige")
+                            {
+                                // 检查字符串是否非空
+                                // 删除最后一个字符
+                                if (CE_out == "")
+                                {
+                                    if ((output_str).length() > 0)
+                                        if (isChineseChar((output_str).charAt((output_str).length() - 3)))
+                                            (output_str).remove((output_str).length() - 3);
+                                        else
+                                            (output_str).remove((output_str).length() - 1);
+                                }
+                                else if (CE_out.length() > 0)
+                                    CE_out.remove(CE_out.length() - 1);
+                            }
+                            else if (key.text_now == " ")
+                            {
+                                if (!CE_of)
+                                    output_str += " ";
+                                else
+                                    CE_out += " ";
+                            }
+                            else if (key.text_now == ",")
+                            {
+                                if (!CE_of)
+                                    output_str += ",";
+                                else
+                                    CE_out += "，";
+                            }
+                            else if (key.text_now == ".")
+                            {
+                                if (!CE_of)
+                                    output_str += ".";
+                                else
+                                    CE_out += "。";
+                            }
                             else
-                                CE_out += " ";
+                            {
+                                if (key.capslk)
+                                {
+                                    key.capslk = !key.capslk;
+                                    output_str += key_arr[keyboard_now];
+                                }
+                                else
+                                {
+                                    if (!CE_of)
+                                        output_str += key_arr[keyboard_now];
+                                    else
+                                        CE_out += PINYIN_MEUN_arr[keyboard_now];
+                                }
+                            }
                         }
-                        else if (key.text_now == ",")
+                    }
+                    else
+                    {
+                        if (IN == UP) // 向上
                         {
-                            if (!CE_of)
-                                output_str += ",";
+                            if (Pointer_dir)
+                                key.text_now = pinyin_MEUN[keyboard_now].up;
                             else
-                                CE_out += "，";
+                                key.text_now = pinyin_MEUN[keyboard_now].left;
                         }
-                        else if (key.text_now == ".")
+                        else if (IN == DOWN) // 向下
                         {
-                            if (!CE_of)
-                                output_str += ".";
+                            if (Pointer_dir)
+                                key.text_now = pinyin_MEUN[keyboard_now].down;
                             else
-                                CE_out += "。";
+                                key.text_now = pinyin_MEUN[keyboard_now].right;
+                        }
+                        else if (IN == SELECT)
+                        {
+                            if (SELECT_isok == 0)
+                            {
+                                Pointer_dir = !Pointer_dir;
+                                SELECT_time = millis();
+                                SELECT_isok = 1;
+                            }
+                            else
+                            {
+                                if (millis() - SELECT_time >= 200)
+                                {
+                                    if (key.text_now == "input")
+                                    {
+                                    }
+                                    else if (key.text_now == "daxie")
+                                    {
+                                        key.capslk = !key.capslk;
+                                    }
+                                    else if (key.text_now == "fu")
+                                    {
+                                    }
+                                    else if (key.text_now == "shu")
+                                    {
+                                        num_of = !num_of;
+                                    }
+                                    else if (key.text_now == "up")
+                                    {
+                                        if (CE_of)
+                                            if (CE_num > 0)
+                                                CE_num--;
+                                    }
+                                    else if (key.text_now == "text1")
+                                    {
+                                        output_str += mystring.substring(CE_num * 3, CE_num * 3 + 3);
+                                        CE_num = 0;
+                                        CE_num_max = 0;
+                                        CE_out = "";
+                                    }
+                                    else if (key.text_now == "text2")
+                                    {
+                                        output_str += mystring.substring((CE_num + 1) * 3, (CE_num + 1) * 3 + 3);
+                                        CE_num = 0;
+                                        CE_num_max = 0;
+                                        CE_out = "";
+                                    }
+                                    else if (key.text_now == "text3")
+                                    {
+                                        output_str += mystring.substring((CE_num + 2) * 3, (CE_num + 2) * 3 + 3);
+                                        CE_num = 0;
+                                        CE_num_max = 0;
+                                        CE_out = "";
+                                    }
+                                    else if (key.text_now == "down")
+                                    {
+                                        if (CE_of)
+                                            if (CE_num + 3 < CE_num_max)
+                                                CE_num++;
+                                    }
+                                    else if (key.text_now == "CE")
+                                    {
+                                        CE_of = !CE_of;
+                                        output_str += CE_out;
+                                        CE_out = "";
+                                    }
+                                    else if (key.text_now == "Enter")
+                                    {
+                                        if (CE_out == "")
+                                        {
+                                            handleInput = 1;
+                                        }
+                                        else
+                                        {
+                                            output_str += CE_out;
+                                            CE_out = "";
+                                        }
+                                    }
+                                    else if (key.text_now == "tuige")
+                                    {
+                                        // 检查字符串是否非空
+                                        // 删除最后一个字符
+                                        if (CE_out == "")
+                                        {
+                                            if ((output_str).length() > 0)
+                                                if (isChineseChar((output_str).charAt((output_str).length() - 3)))
+                                                    (output_str).remove((output_str).length() - 3);
+                                                else
+                                                    (output_str).remove((output_str).length() - 1);
+                                        }
+                                        else if (CE_out.length() > 0)
+                                            CE_out.remove(CE_out.length() - 1);
+                                    }
+                                    else if (key.text_now == " ")
+                                    {
+                                        if (!CE_of)
+                                            output_str += " ";
+                                        else
+                                            CE_out += " ";
+                                    }
+                                    else if (key.text_now == ",")
+                                    {
+                                        if (!CE_of)
+                                            output_str += ",";
+                                        else
+                                            CE_out += "，";
+                                    }
+                                    else if (key.text_now == ".")
+                                    {
+                                        if (!CE_of)
+                                            output_str += ".";
+                                        else
+                                            CE_out += "。";
+                                    }
+                                    else
+                                    {
+                                        if (key.capslk)
+                                        {
+                                            key.capslk = !key.capslk;
+                                            output_str += key_arr[keyboard_now];
+                                        }
+                                        else
+                                        {
+                                            if (!CE_of)
+                                                output_str += key_arr[keyboard_now];
+                                            else
+                                                CE_out += PINYIN_MEUN_arr[keyboard_now];
+                                        }
+                                    }
+                                    SELECT_time = millis();
+                                }
+                            }
                         }
                         else
                         {
-                            if (key.capslk)
-                            {
-                                key.capslk = !key.capslk;
-                                output_str += key_arr[keyboard_now];
-                            }
-                            else
-                            {
-                                if (!CE_of)
-                                    output_str += key_arr[keyboard_now];
-                                else
-                                    CE_out += PINYIN_MEUN_arr[keyboard_now];
-                            }
+                            SELECT_isok = 0;
                         }
                     }
                 }
                 else if (handleInput)
                 {
+                    *trigger = 1;
                     handleInput = 0;
                     *if_display = 0;
                     *if_Input = 0;
@@ -1487,6 +1713,10 @@ void Axeuh_UI_Keyboard::drawKeyboard(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P,
                     key.cn_box_ui = 24;
 
                     **return_num_pointer = 1;
+                }
+                else
+                {
+                    SELECT_isok = 0;
                 }
             }
             else
