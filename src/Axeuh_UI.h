@@ -18,6 +18,7 @@ class Axeuh_UI_slider;
 class Axeuh_UI_Ebook;
 class Axeuh_UI;
 
+
 struct CharCache
 {
     char utf8Char[4]; // UTF8字符最大4字节
@@ -117,7 +118,13 @@ public:
             // 添加新字符到数组末尾
             memcpy(Charlen[size].utf8Char, c, 4);
             Charlen[size].width = D->getUTF8Width(c) + 1;
+            while (Charlen[size].width > 128)
+            {
+                Charlen[size].width = D->getUTF8Width(c) + 1;
+            }
+            // Serial.println((String)c + "  " + (String)Charlen[size].width + "  " + (String)size);
             size++; // 更新已用数量
+
             // Serial.println("已使用:" + (String)size);
             return Charlen[size - 1].width;
         }
@@ -172,6 +179,12 @@ enum OptionistriggersAnimation
 {
     Trigger,   // 触发菜单动画（菜单动画就是会让菜单变窄的动画）
     No_Trigger // 不触发
+};
+
+enum Option_hardware
+{
+    hardware_3, // 触发菜单动画（菜单动画就是会让菜单变窄的动画）
+    hardware_5  // 不触发
 };
 
 // 定义选项结构体
@@ -235,7 +248,7 @@ struct Menu_gif
             x_now = -width - x;
     }
 };
-
+typedef void (*Panel_draw_callback)(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m);
 typedef void (*textMenuCallback)(Axeuh_UI_Panel *p, Axeuh_UI *menu);
 typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
 typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
@@ -309,6 +322,8 @@ public:
 
     Axeuh_UI_input_callback input_callback; // 输入回调函数
 
+    Option_hardware hardware_;
+
     Axeuh_UI() {}
     Axeuh_UI(U8G2 *d) { D = d; }
 
@@ -325,6 +340,16 @@ public:
     IN_PUT_Mode get_IN_now() { return IN_now; }
     uint16_t get_fps_max() { return fps_max; }
     float get_fps() { return fps; }
+
+    SemaphoreHandle_t get_xMutex() { return xMutex_; }
+    void xSemaphoreTake_xMutex(int t = 100)
+    {
+        xSemaphoreTake(xMutex_, t);
+    }
+    void xSemaphoreGive_xMutex()
+    {
+        xSemaphoreGive(xMutex_);
+    }
 
     // 发生输入状态
     void set_IN_now(IN_PUT_Mode in)
@@ -353,8 +378,14 @@ public:
     }
 
     // 配置实例
+    void set(Option_hardware o) { hardware_ = o; }
     void set(Axeuh_UI_input_callback callback) { input_callback = callback; }
-    void set(Axeuh_UI_Panel *p) { Panel = p; }
+    void set(Axeuh_UI_Panel *p)
+    {
+        xSemaphoreTake(xMutex_, 100);
+        Panel = p;
+        xSemaphoreGive(xMutex_);
+    }
     void set(Axeuh_UI_StatusBar *sb) { StatusBar = sb; }
     void set(Axeuh_UI_Cube *c) { cube = c; }
     // 渐进动画函数
@@ -493,7 +524,7 @@ struct MenuOption : public Axeuh_UI
             }
             return *this;
         }
-
+        // AutolenString &operator==(const char *newVal, std::nullptr_t) { return *this = String(newVal); }
         AutolenString &operator=(const char *newVal) { return *this = String(newVal); }
         AutolenString &operator+=(const String &rhs)
         {
@@ -538,7 +569,7 @@ struct MenuOption : public Axeuh_UI
         // 指针运算符重载
         String *operator&()
         {
-            Serial.println("1");
+            // Serial.println("1");
             return &value;
         }
         //  支持所有字符串操作
@@ -576,6 +607,27 @@ public:
         y = 0;
     }
 
+    void set(String n = "",
+             uint8_t h = 12,
+             alignMode a = LEFT_CENTER,
+             OptionMode m = TEXT,
+             Menu_gif *g = nullptr,
+             OptionistriggersAnimation tr = No_Trigger,
+             textMenuCallback cb = nullptr,
+             OptionisSelectable is = Focused)
+    {
+        // name.parent=*this;
+        name.value = n;
+        height = h;
+        align = a;
+        mode = m;
+        gif = g;
+        callback = cb;
+        triggersAnimation = tr;
+        isSelectable = is;
+        x = 0;
+        y = 0;
+    }
     // 触发更新
     void triggerUpdate()
     {
@@ -609,6 +661,11 @@ public:
     void set_y(int16_t y_)
     {
         y = y_;
+    }
+
+    ~MenuOption()
+    {
+        // MenuOptionTombstone::invalidate(this);
     }
 };
 
@@ -683,6 +740,8 @@ public:
 
     textMenuCallback callback;
 
+    bool *trigger;
+
     Axeuh_UI_TextMenu() {}
 
     Axeuh_UI_TextMenu(MenuOption menuOptions_[], uint8_t count)
@@ -710,8 +769,10 @@ public:
     // 配置选项菜单
     void set(MenuOption menuOptions_[], uint8_t count)
     {
+        xSemaphoreTake(xMutex, 100);
         this->menuOptions = menuOptions_; // 保存指针
         this->menuOptions_index = count;  // 保存数量
+        xSemaphoreGive(xMutex);
     }
     // 计算所有选项的长度
     void init_text_more()
@@ -778,6 +839,12 @@ public:
         }
         else
             in_put_now = STOP;
+        xSemaphoreGive(xMutex);
+    }
+    void set_meun_number_now(uint8_t num)
+    {
+        xSemaphoreTake(xMutex, 100);
+        meun_number_now = num;
         xSemaphoreGive(xMutex);
     }
 
@@ -919,11 +986,14 @@ public:
     bool *if_Input = 0;
     bool handleInput = 0;
 
+    bool *trigger;
     bool **return_num_pointer; // 返回所触发的开关
 
     float unit = 1; // 刻度单位
 
     unsigned long lastMillis = 0;
+
+    MenuCallback_Ebook callback;
 
     Axeuh_UI_slider()
     {
@@ -942,6 +1012,8 @@ public:
         s.max = max;
         unit = unit_;
     }
+
+    void set(MenuCallback_Ebook cb) { callback = cb; } // 设置回调函数
 
     void set(String name, float *num, float min, float max, float unit_ = 1)
     {
@@ -972,6 +1044,10 @@ public:
         s.min = min;
         s.max = max;
         unit = unit_;
+    }
+
+    void set_num()
+    {
     }
 
     // 设置返回启用输入值
@@ -1250,6 +1326,7 @@ public:
 
     bool handleInput = 0;
     bool **return_num_pointer; // 返回所触发的开关
+    bool *trigger;
 
     int text_height_now = 0;
 
@@ -1349,6 +1426,8 @@ public:
     PINYIN_MEUN_ key;
     int keyboard_now;
 
+    bool Pointer_dir = 0;
+
     int time_ = 0;
 
     bool CE_of = 0;
@@ -1366,8 +1445,12 @@ public:
     bool *if_Input = nullptr;
     bool **return_num_pointer;
     bool handleInput = 0;
+    bool *trigger;
 
     unsigned long lastMillis = 0;
+
+    bool SELECT_isok = 0;
+    unsigned long SELECT_time = 0;
 
     Axeuh_UI_Keyboard()
     {
@@ -1418,6 +1501,7 @@ public:
             return 0;
     }
     void drawKeyboard(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m);
+    void SELECT_(String output_str, String mystring, const char **key_arr);
 };
 #endif
 class Axeuh_UI_Panel : public Axeuh_UI // 面板类
@@ -1450,6 +1534,8 @@ public:
 
     bool handleInput = 0;
 
+    bool trigger = 0;
+
     Axeuh_UI_TextMenu *text = nullptr;      // 菜单实例
     Axeuh_UI_Panel *Panel_ = nullptr;       // 子面板
     Axeuh_UI_Panel *Parent_Panel = nullptr; // 父级面板
@@ -1459,6 +1545,8 @@ public:
     Axeuh_UI_Keyboard *keyboard = nullptr; // 键盘实例
 #endif
     Menu_gif *gif = nullptr; // 图片实例
+
+    Panel_draw_callback Panel_draw;
 
     uint8_t font_height = 12; // 字体高度
 
@@ -1513,6 +1601,8 @@ public:
         keyboard->if_Input = &if_Input;
         keyboard->if_display = &if_display;
         keyboard->return_num_pointer = &return_num_pointer;
+        keyboard->trigger = &trigger;
+
         xSemaphoreGive(xMutex);
     }
 #endif
@@ -1539,11 +1629,12 @@ public:
         Ebook->if_Input = &if_Input;
         Ebook->if_display = &if_display;
         Ebook->return_num_pointer = &return_num_pointer;
+        Ebook->trigger = &trigger;
         xSemaphoreGive(xMutex);
     }
     void set(Axeuh_UI_TextMenu *text_) // 绑定菜单实例
     {
-        xSemaphoreTake(xMutex, 10);
+        xSemaphoreTake(xMutex, 100);
         text = text_;
         text->x = &x;
         text->y = &y;
@@ -1563,6 +1654,7 @@ public:
         text->lucency = &lucency;
         text->if_display = &if_display;
         text->if_Input = &if_Input;
+        text->trigger = &trigger;
 
         text->inti_textmenu();
         xSemaphoreGive(xMutex);
@@ -1594,6 +1686,7 @@ public:
         slider_->if_Input = &if_Input;
 
         slider_->return_num_pointer = &return_num_pointer;
+        slider_->trigger = &trigger;
 
         xSemaphoreGive(xMutex);
     }
@@ -1623,13 +1716,25 @@ public:
         xSemaphoreGive(xMutex);
     }
 
-    void set(textMenuCallback cb) // 绑定回调函数
+    void set_Callback(textMenuCallback cb) // 绑定回调函数
     {
+        xSemaphoreTake(xMutex, 100);
         if (text != nullptr)
             text->callback = cb;
         if (Ebook != nullptr)
             Ebook->callback = cb;
+        if (slider_ != nullptr)
+            slider_->callback = cb;
+        xSemaphoreGive(xMutex);
     }
+
+    void set_draw(Panel_draw_callback cb) // 绑定回调函数
+    {
+        xSemaphoreTake(xMutex, 100);
+        Panel_draw = cb;
+        xSemaphoreGive(xMutex);
+    }
+
     // void set(MenuCallback_Ebook cb)//绑定回调函数
     // {
     //     if (Ebook != nullptr)
@@ -1690,6 +1795,12 @@ public:
     {
         xSemaphoreTake(xMutex, 100);
         lucency = l;
+        xSemaphoreGive(xMutex);
+    }
+    void set_trigger(bool t) // 改变是否透明
+    {
+        xSemaphoreTake(xMutex, 100);
+        trigger = t;
         xSemaphoreGive(xMutex);
     }
     void set_x(int16_t x_)
@@ -1851,6 +1962,8 @@ public:
         interlude_r = r_;
         xSemaphoreGive(xMutex);
     }
+
+    bool get_trigger() { return trigger; }
 
     int16_t get_x() { return x; }
     int16_t get_y() { return y; }
