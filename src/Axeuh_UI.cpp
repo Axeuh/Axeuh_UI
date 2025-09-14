@@ -10,7 +10,6 @@ MenuOption Axeuh_error[] = // 菜单信息
         {"空指针！", 14},
 };
 
-
 void Axeuh_UI_Ebook::drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m)
 {
     if (*if_display || !get_animation_all_isok())
@@ -595,7 +594,6 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
     {
         unsigned long currentMillis = millis();
 
-
         if (menuOptions == nullptr)
         {
             menuOptions = Axeuh_error;
@@ -609,6 +607,7 @@ void Axeuh_UI_TextMenu::draw_textmenu(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P
         int16_t interface_y_ = *interlude_y + *y;
         int16_t interface_w_ = *interlude_w + *w;
         int16_t interface_h_ = *interlude_h + *h;
+
 
         if (Box_opt.mode == TEXT || Box_opt.mode == TEXT_MORE)
             pointer_x = 0;
