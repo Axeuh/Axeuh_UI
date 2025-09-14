@@ -18,7 +18,6 @@ class Axeuh_UI_slider;
 class Axeuh_UI_Ebook;
 class Axeuh_UI;
 
-
 struct CharCache
 {
     char utf8Char[4]; // UTF8字符最大4字节
@@ -1271,7 +1270,7 @@ public:
         D->setDrawColor(1);
         D->drawUTF8(0, y_now + font_offset_y, ((String) "贺吸呼" + (String)m->fps + (String) "fps").c_str());
 
-        animation(&y_now, y, 30);
+        animation(&y_now, y, m->fps / 3 * 5);
 
         xSemaphoreGive(xMutex);
     }
@@ -1920,7 +1919,19 @@ public:
         interlude_y = y_;
         interlude_w = w_;
         interlude_h = h_;
+
         xSemaphoreGive(xMutex);
+
+        if (Panel_ != nullptr)
+        {
+            if (Panel_->if_display)
+            {
+                if (w_ == -(w - 3)||w_ < -(Panel_->w - 3))
+                    Panel_->set_interlude(x_, y_, -(Panel_->w - 3), h_);
+                    else
+                    Panel_->set_interlude(x_, y_, w_, h_);
+            }
+        }
     }
     void set_interlude(int16_t x_, int16_t y_, int16_t w_, int16_t h_, int16_t r_)
     {
