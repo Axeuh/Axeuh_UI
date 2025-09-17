@@ -866,7 +866,7 @@ const PinyinMap pinyinMap_c[] = {
     {"uo", PY_mb_cuo},
     {NULL, NULL}};
 const PinyinMap pinyinMap_d[] = {
-    {"a   ", PY_mb_da},
+    {"a", PY_mb_da},
     {"ai", PY_mb_dai},
     {"an", PY_mb_dan},
     {"ang", PY_mb_dang},
@@ -940,7 +940,7 @@ const PinyinMap pinyinMap_h[] = {
     {"ua", PY_mb_hua},
     {"uai", PY_mb_huai},
     {"uan", PY_mb_huan},
-    {"uang ", PY_mb_huang},
+    {"uang", PY_mb_huang},
     {"ui", PY_mb_hui},
     {"un", PY_mb_hun},
     {"uo", PY_mb_huo},
@@ -1119,7 +1119,7 @@ const PinyinMap pinyinMap_s[] = {
     {"ha", PY_mb_sha},
     {"hai", PY_mb_shai},
     {"han", PY_mb_shan},
-    {"hang ", PY_mb_shang},
+    {"hang", PY_mb_shang},
     {"hao", PY_mb_shao},
     {"he", PY_mb_she},
     {"hen", PY_mb_shen},
@@ -1380,3 +1380,4 @@ char *PYSearch(const char *msg, int *num)
     /* 否者返回空的指针 */
     return NULL;
 }
+
