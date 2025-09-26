@@ -250,6 +250,7 @@ struct Menu_gif
 typedef void (*Panel_draw_callback)(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m);
 typedef void (*textMenuCallback)(Axeuh_UI_Panel *p, Axeuh_UI *menu);
 typedef void (*MenuCallback_Ebook)(Axeuh_UI_Panel *p, Axeuh_UI *m);
+typedef void (*StatusBar_Callback)(U8G2 *p, Axeuh_UI *m);
 typedef IN_PUT_Mode (*Axeuh_UI_input_callback)();
 
 class SimpleKalmanFilter // 卡尔曼滤波
@@ -295,9 +296,10 @@ class Axeuh_UI // 总UI类
 private:
     TaskHandle_t displayTaskHandle = nullptr;            // ui进程句柄
     SemaphoreHandle_t xMutex_ = xSemaphoreCreateMutex(); // 互斥锁
-    U8G2 *D;                                             // U8G2实例指针
 
 public:
+    U8G2 *D; // U8G2实例指针
+
     int16_t height = 64;       // 屏幕高度
     int16_t width = 128;       // 屏幕宽度
     int16_t font_offset_x = 0; // 字体显示偏移值
@@ -324,7 +326,10 @@ public:
     Option_hardware hardware_;
 
     Axeuh_UI() {}
-    Axeuh_UI(U8G2 *d) { D = d; }
+    Axeuh_UI(U8G2 *d)
+    {
+        D = d;
+    }
 
     void begin()
     {
@@ -390,6 +395,8 @@ public:
     // 渐进动画函数
     void animation(float *a, float a_trg_, float n, float precision = 0.50f)
     {
+        // *a=a_trg_;
+        // return;
         float target = a_trg_;
         if (n < 9)
             return;
@@ -406,6 +413,8 @@ public:
     }
     void animation(float *a, int16_t a_trg_, float n)
     {
+        // *a=a_trg_;
+        // return;
         if (n < 9)
             return;
         if (n < 15)
@@ -421,6 +430,8 @@ public:
     }
     void animation(int16_t *a, int16_t *a_trg, int16_t n)
     {
+        // *a=*a_trg;
+        // return;
         if (n < 9)
             return;
         if (n < 15)
@@ -465,7 +476,7 @@ public:
         Axeuh_UI *ui = static_cast<Axeuh_UI *>(xTask1);
         ui->menu_display();
     }
-    void menu_display_xtaskbegin(UBaseType_t Memory_size = 4096 * 2, BaseType_t xCoreID = 0)
+    void menu_display_xtaskbegin(UBaseType_t Memory_size = 4096, BaseType_t xCoreID = 0)
     {
         // 确保任务只创建一次
         if (displayTaskHandle == nullptr)
@@ -479,6 +490,14 @@ public:
                 &displayTaskHandle, // 任务句柄
                 xCoreID             // 核心分配
             );
+        }
+    }
+    void menu_display_xtaskstop()
+    {
+        if (displayTaskHandle == nullptr)
+        {
+            vTaskDelete(displayTaskHandle);
+            displayTaskHandle = nullptr;
         }
     }
 
@@ -501,82 +520,12 @@ public:
 };
 
 // 定义选项结构体
+// 定义选项结构体
 struct MenuOption : public Axeuh_UI
 {
-    class AutolenString // 一个自动计算当前选项长度的字符串类
-    {                   // 只要修改就自动计算刷新当前选项长度，不实时计算是因为会降低刷新速度
-    public:
-        MenuOption &parent; // 持有父对象引用
-        String value;       // 实际存储的值
-
-        AutolenString(MenuOption &p) : parent(p) {}
-        AutolenString(MenuOption &p, const String &initVal = "")
-            : parent(p), value(initVal) {}
-
-        // 重载所有赋值运算符
-        AutolenString &operator=(const String &newVal)
-        {
-            if (value != newVal)
-            {
-                value = newVal;
-                parent.triggerUpdate(); // 触发更新
-            }
-            return *this;
-        }
-        // AutolenString &operator==(const char *newVal, std::nullptr_t) { return *this = String(newVal); }
-        AutolenString &operator=(const char *newVal) { return *this = String(newVal); }
-        AutolenString &operator+=(const String &rhs)
-        {
-            value += rhs;           // 追加字符串
-            parent.triggerUpdate(); // 触发更新
-            return *this;           // 支持链式调用
-        }
-
-        friend String operator+(const AutolenString &lhs, const String &rhs) { return lhs.value + rhs; }
-
-        friend String operator+(const String &lhs, const AutolenString &rhs) { return lhs + rhs.value; }
-
-        // 隐式转换回原始类型
-        operator String &() { return value; }
-
-        operator String() const { return value; }
-
-        operator AutolenString *() { return this; }
-
-        // 在类成员函数
-        unsigned int length() const { return value.length(); }
-
-        char charAt(unsigned int index) const { return value.charAt(index); }
-
-        String substring(unsigned int from, unsigned int to) const { return value.substring(from, to); }
-
-        const char *c_str() const { return value.c_str(); }
-        // remove 方法重载
-        AutolenString &remove(unsigned int index, unsigned int count)
-        {
-            value.remove(index, count);
-            parent.triggerUpdate(); // 触发更新
-            return *this;           // 链式调用
-        }
-        AutolenString &remove(unsigned int index)
-        {
-            value.remove(index);
-            parent.triggerUpdate();
-            return *this;
-        }
-
-        // 指针运算符重载
-        String *operator&()
-        {
-            // Serial.println("1");
-            return &value;
-        }
-        //  支持所有字符串操作
-        bool operator==(const String &other) const { return value == other; }
-    };
-
 public:
-    AutolenString name;                          // 选项名称
+    // 使用 const char* 存储字符串
+    const char *name;                            // 选项名称
     uint8_t height;                              // 选项高度（单位：像素）
     alignMode align;                             // 对齐方式
     OptionMode mode;                             // 选项模式
@@ -585,13 +534,65 @@ public:
 
     Menu_gif *gif;             // 选项图片实例指针
     textMenuCallback callback; // 选项选中总回调函数
-    // void *callbackArg;
 
-    int8_t x; // 选项文本x偏移
-    int8_t y;
-    uint16_t all_len = 0; // 选项像素宽度
+    int8_t x = 0; // 选项文本x偏移
+    int8_t y = 0;
 
-    MenuOption(String n = "",
+    // 添加私有成员来管理动态分配的内存（如果需要）
+private:
+    char *dynamic_name = nullptr;
+
+public:
+    // 实现字符串方法
+    unsigned int length() const
+    {
+        return name ? strlen(name) : 0;
+    }
+
+    char charAt(unsigned int index) const
+    {
+        if (!name || index >= strlen(name))
+            return '\0';
+        return name[index];
+    }
+
+    String substring(unsigned int from, unsigned int to) const
+    {
+        if (!name || from >= strlen(name) || from > to)
+            return "";
+
+        // 确保 to 不超过字符串长度
+        if (to > strlen(name))
+            to = strlen(name);
+
+        // 计算子字符串长度
+        unsigned int len = to - from;
+
+        // 创建临时缓冲区并复制子字符串
+        char *temp = (char *)malloc(len + 1);
+        if (!temp)
+            return "";
+
+        strncpy(temp, name + from, len);
+        temp[len] = '\0';
+
+        String result(temp);
+        free(temp);
+        return result;
+    }
+
+    String substring(unsigned int from) const
+    {
+        return substring(from, strlen(name));
+    }
+
+    const char *c_str() const
+    {
+        return name ? name : "";
+    }
+
+    // 简化构造函数
+    MenuOption(const char *n = "",
                uint8_t h = 12,
                alignMode a = LEFT_CENTER,
                OptionMode m = TEXT,
@@ -599,13 +600,74 @@ public:
                OptionistriggersAnimation tr = No_Trigger,
                textMenuCallback cb = nullptr,
                OptionisSelectable is = Focused)
-        : name(*this, n), height(h), align(a), mode(m),
-          gif(g), callback(cb), triggersAnimation(tr), isSelectable(is)
+        : name(n), height(h), align(a), mode(m),
+          gif(g), callback(cb), triggersAnimation(tr), isSelectable(is),
+          x(0), y(0)
     {
-        x = 0;
-        y = 0;
+    }
+    // MenuOption(String n = "",
+    //            uint8_t h = 12,
+    //            alignMode a = LEFT_CENTER,
+    //            OptionMode m = TEXT,
+    //            Menu_gif *g = nullptr,
+    //            OptionistriggersAnimation tr = No_Trigger,
+    //            textMenuCallback cb = nullptr,
+    //            OptionisSelectable is = Focused)
+    //     :  height(h), align(a), mode(m),
+    //       gif(g), callback(cb), triggersAnimation(tr), isSelectable(is),
+    //       x(0), y(0)
+    // {
+    //     set_str(n);
+    // }
+
+    // 修改 set 方法以接受 const char*
+    void set(const char *n = "",
+             uint8_t h = 12,
+             alignMode a = LEFT_CENTER,
+             OptionMode m = TEXT,
+             Menu_gif *g = nullptr,
+             OptionistriggersAnimation tr = No_Trigger,
+             textMenuCallback cb = nullptr,
+             OptionisSelectable is = Focused)
+    {
+        // 释放旧的动态内存
+        if (dynamic_name)
+        {
+            free(dynamic_name);
+            dynamic_name = nullptr;
+        }
+
+        // 设置新值
+        if (n && n[0] != '\0')
+        {
+            dynamic_name = (char *)malloc(strlen(n) + 1);
+            if (dynamic_name)
+            {
+                strcpy(dynamic_name, n);
+                name = dynamic_name;
+            }
+            else
+            {
+                name = "";
+            }
+        }
+        else
+        {
+            name = "";
+        }
+        name = n;
+        height = h;
+        align = a;
+        mode = m;
+        gif = g;
+        callback = cb;
+        triggersAnimation = tr;
+        isSelectable = is;
+        // x = 0;
+        // y = 0;
     }
 
+    // 添加接受 String 的 set 方法
     void set(String n = "",
              uint8_t h = 12,
              alignMode a = LEFT_CENTER,
@@ -615,8 +677,32 @@ public:
              textMenuCallback cb = nullptr,
              OptionisSelectable is = Focused)
     {
-        // name.parent=*this;
-        name.value = n;
+        // 释放旧的动态内存
+        if (dynamic_name)
+        {
+            free(dynamic_name);
+            dynamic_name = nullptr;
+        }
+
+        // 从 String 复制内容
+        if (n.length() > 0)
+        {
+            dynamic_name = (char *)malloc(n.length() + 1);
+            if (dynamic_name)
+            {
+                strcpy(dynamic_name, n.c_str());
+                name = dynamic_name;
+            }
+            else
+            {
+                name = "";
+            }
+        }
+        else
+        {
+            name = "";
+        }
+
         height = h;
         align = a;
         mode = m;
@@ -624,47 +710,58 @@ public:
         callback = cb;
         triggersAnimation = tr;
         isSelectable = is;
-        x = 0;
-        y = 0;
+        // x = 0;
+        // y = 0;
     }
-    // 触发更新
-    void triggerUpdate()
+
+    // void set_x(int16_t x_)
+    // {
+    //     x = x_;
+    // }
+
+    // void set_y(int16_t y_)
+    // {
+    //     y = y_;
+    // }
+
+    void set_str(String n = "")
     {
-        int name_leng = name.length();
-        int all_len_ = 0;
-        for (int alen = 0; alen < name_leng; alen++)
+        // 释放旧的动态内存
+        if (dynamic_name)
         {
-            char currentChar = name.charAt(alen);
-            if (currentChar == '\r' || currentChar == '\t' || currentChar == '\n')
+            free(dynamic_name);
+            dynamic_name = nullptr;
+        }
+
+        // 从 String 复制内容
+        if (n.length() > 0)
+        {
+            dynamic_name = (char *)malloc(n.length() + 1);
+            if (dynamic_name)
             {
-                continue;
-            }
-            if (isChineseChar(currentChar))
-            {
-                all_len_ += len_c.Get((name.substring(alen, alen + 3)).c_str());
-                alen += 2;
+                strcpy(dynamic_name, n.c_str());
+                name = dynamic_name;
             }
             else
             {
-                all_len_ += len_c.Get((name.substring(alen, alen + 1)).c_str());
+                name = "";
             }
         }
-        // Serial.println(all_len);
-        all_len = all_len_;
+        else
+        {
+            name = "";
+        }
     }
 
-    void set_x(int16_t x_)
-    {
-        x = x_;
-    }
-    void set_y(int16_t y_)
-    {
-        y = y_;
-    }
-
+    // 析构函数 - 释放动态内存
     ~MenuOption()
     {
-        // MenuOptionTombstone::invalidate(this);
+        if (dynamic_name)
+        {
+            free(dynamic_name);
+            dynamic_name = nullptr;
+            name = nullptr;
+        }
     }
 };
 
@@ -675,7 +772,10 @@ public:
 
     IN_PUT_Mode in_put_now = STOP; // 当前菜单输入状态
 
-    MenuOption *menuOptions;       // 选项菜单指针
+    MenuOption *menuOptions;             // 选项菜单指针
+    const MenuOption *const_menuOptions; // 选项菜单指针
+    uint16_t *menu_str_len;
+
     uint8_t menuOptions_index = 0; // 选项数量
 
     int16_t pointer_x = 0; // 聚焦选项的小方块目前位置
@@ -743,17 +843,35 @@ public:
 
     Axeuh_UI_TextMenu() {}
 
-    Axeuh_UI_TextMenu(MenuOption menuOptions_[], uint8_t count)
+    Axeuh_UI_TextMenu(MenuOption *menuOptions_, uint8_t count)
     {
         this->menuOptions = menuOptions_; // 保存指针
         this->menuOptions_index = count;  // 保存数量
+        uint16_t *newmenu_str_len = new uint16_t[count];
+        memset(newmenu_str_len, 0, sizeof(uint16_t) * count);
+        menu_str_len = newmenu_str_len;
+    }
+    Axeuh_UI_TextMenu(const MenuOption *menuOptions_, uint8_t count)
+    {
+        this->const_menuOptions = menuOptions_; // 保存指针
+        this->menuOptions_index = count;        // 保存数量
+        uint16_t *newmenu_str_len = new uint16_t[count];
+        memset(newmenu_str_len, 0, sizeof(uint16_t) * count);
+        menu_str_len = newmenu_str_len;
     }
 
     static void staticCallback(Axeuh_UI_TextMenu *arg, Axeuh_UI_Panel *p, Axeuh_UI *m)
     {
-        if (arg->menuOptions[arg->meun_number_now].callback != nullptr)
+        if (arg->const_menuOptions == nullptr)
         {
-            arg->menuOptions[arg->meun_number_now].callback(p, m); // 触发当前选中项的回调
+            if (arg->menuOptions[arg->meun_number_now].callback != nullptr)
+            {
+                arg->menuOptions[arg->meun_number_now].callback(p, m); // 触发当前选中项的回调
+            }
+            else if (arg->callback != nullptr)
+            {
+                arg->callback(p, m);
+            }
         }
         else
         {
@@ -771,6 +889,22 @@ public:
         xSemaphoreTake(xMutex, 100);
         this->menuOptions = menuOptions_; // 保存指针
         this->menuOptions_index = count;  // 保存数量
+        uint16_t *newmenu_str_len = new uint16_t[count];
+        memset(newmenu_str_len, 0, sizeof(uint16_t) * count);
+        delete[] menu_str_len;
+        memcpy(newmenu_str_len, menu_str_len, sizeof(uint16_t) * count);
+        menu_str_len = newmenu_str_len;
+        xSemaphoreGive(xMutex);
+    }
+    void set_index(uint8_t count)
+    {
+        xSemaphoreTake(xMutex, 100);
+        this->menuOptions_index = count; // 保存数量
+        uint16_t *newmenu_str_len = new uint16_t[count];
+        memset(newmenu_str_len, 0, sizeof(uint16_t) * count);
+        delete[] menu_str_len;
+        memcpy(newmenu_str_len, menu_str_len, sizeof(uint16_t) * count);
+        menu_str_len = newmenu_str_len;
         xSemaphoreGive(xMutex);
     }
     // 计算所有选项的长度
@@ -778,27 +912,32 @@ public:
     {
         for (int i = 0; i < menuOptions_index; i++)
         {
-            MenuOption &m = menuOptions[i];
-            int name_leng = m.name.length();
+            MenuOption *mm;
+            if (menuOptions != nullptr && const_menuOptions == nullptr)
+                mm = menuOptions;
+            else if (menuOptions == nullptr && const_menuOptions != nullptr)
+                mm = (MenuOption *)const_menuOptions;
+            MenuOption &m = mm[i];
+            int name_leng = m.length();
             int all_len_ = 0;
             for (int alen = 0; alen < name_leng; alen++)
             {
-                char currentChar = m.name.charAt(alen);
+                char currentChar = m.charAt(alen);
                 if (currentChar == '\r' || currentChar == '\t' || currentChar == '\n')
                 {
                     continue;
                 }
                 if (isChineseChar(currentChar))
                 {
-                    all_len_ += len_c.Get((m.name.substring(alen, alen + 3)).c_str());
+                    all_len_ += len_c.Get((m.substring(alen, alen + 3)).c_str());
                     alen += 2;
                 }
                 else
                 {
-                    all_len_ += len_c.Get((m.name.substring(alen, alen + 1)).c_str());
+                    all_len_ += len_c.Get((m.substring(alen, alen + 1)).c_str());
                 }
             }
-            m.all_len = all_len_;
+            menu_str_len[i] = all_len_;
         }
     }
     void draw_MenuOption(U8G2 *D, unsigned long currentMillis, int &text_height_now);
@@ -847,26 +986,33 @@ public:
         xSemaphoreGive(xMutex);
     }
 
-    void set_menuOptions_name(int n, String name_) // 设置选项名称
+    void set_menuOptions_name(int n, const char *name_) // 设置选项名称
     {
         xSemaphoreTake(xMutex, 100);
         menuOptions[n].name = name_;
-        // init_text_more();
+        init_text_more();
+        xSemaphoreGive(xMutex);
+    }
+    void set_menuOptions_name(int n, String name_) // 设置选项名称
+    {
+        xSemaphoreTake(xMutex, 100);
+        menuOptions[n].set_str(name_);
+        init_text_more();
         xSemaphoreGive(xMutex);
     }
 
-    void set_menuOptions_x(int n, int x_) // 设置选项x偏移
-    {
-        xSemaphoreTake(xMutex, 100);
-        menuOptions[n].x = x_;
-        xSemaphoreGive(xMutex);
-    }
-    void set_menuOptions_y(int n, int y_) // 设置选项y偏移
-    {
-        xSemaphoreTake(xMutex, 100);
-        menuOptions[n].y = y_;
-        xSemaphoreGive(xMutex);
-    }
+    // void set_menuOptions_x(int n, int x_) // 设置选项x偏移
+    // {
+    //     xSemaphoreTake(xMutex, 100);
+    //     menuOptions[n].x = x_;
+    //     xSemaphoreGive(xMutex);
+    // }
+    // void set_menuOptions_y(int n, int y_) // 设置选项y偏移
+    // {
+    //     xSemaphoreTake(xMutex, 100);
+    //     menuOptions[n].y = y_;
+    //     xSemaphoreGive(xMutex);
+    // }
 
     bool get_animation_all_isok()
     {
@@ -921,11 +1067,16 @@ public:
     }
     void inti_textmenu()
     {
+        MenuOption *mm;
+        if (menuOptions != nullptr && const_menuOptions == nullptr)
+            mm = menuOptions;
+        else if (menuOptions == nullptr && const_menuOptions != nullptr)
+            mm = (MenuOption *)const_menuOptions;
         isSelectable_start = 0;
         isSelectable_end = 0;
         for (int i = 0; i < menuOptions_index; i++)
         {
-            MenuOption &opt_isSelectable = menuOptions[i];
+            MenuOption &opt_isSelectable = mm[i];
             if (opt_isSelectable.isSelectable == No_Focusing)
                 isSelectable_start++;
             else
@@ -933,7 +1084,7 @@ public:
         }
         for (int i = menuOptions_index - 1; i >= 0; i--)
         {
-            MenuOption &opt_isSelectable = menuOptions[i];
+            MenuOption &opt_isSelectable = mm[i];
             if (opt_isSelectable.isSelectable == No_Focusing)
                 isSelectable_end++;
             else
@@ -1076,6 +1227,9 @@ class Axeuh_UI_Cube : public Axeuh_UI
 {
 public:
     SemaphoreHandle_t xMutex = xSemaphoreCreateMutex();
+    Axeuh_UI_Cube()
+    {
+    }
 
     // 旋转角度变量
     int16_t cube_x = 120, cube_y = 6;
@@ -1243,6 +1397,14 @@ class Axeuh_UI_StatusBar : public Axeuh_UI
 {
 public:
     SemaphoreHandle_t xMutex = xSemaphoreCreateMutex();
+    SimpleKalmanFilter adc_filter;
+    StatusBar_Callback draw;
+    unsigned long previousMillis;
+
+    Axeuh_UI_StatusBar()
+    {
+        adc_filter = SimpleKalmanFilter(1, 10, 2000);
+    }
 
     int16_t y = 0;
     float y_now = 0;
@@ -1263,14 +1425,26 @@ public:
         xSemaphoreGive(xMutex);
     }
 
+    void set_draw(StatusBar_Callback d)
+    {
+        xSemaphoreTake(xMutex, 100);
+        draw = d;
+        xSemaphoreGive(xMutex);
+    }
+
     void drawStatusBar(U8G2 *D, Axeuh_UI *m)
     {
         // 状态栏随便写的，可根据自己需求写，后续会添加自定义回调绘制函数
         xSemaphoreTake(xMutex, 100);
-        D->setDrawColor(1);
-        D->drawUTF8(0, y_now + font_offset_y, ((String) "贺吸呼" + (String)m->fps + (String) "fps").c_str());
 
-        animation(&y_now, y, m->fps / 3 * 5);
+        if (draw != nullptr)
+            draw(D, m);
+        else
+        {
+            D->setDrawColor(1);
+            D->drawUTF8(0, y_now + font_offset_y, ((String) "贺吸呼" + (String)m->fps + (String) "fps").c_str());
+            animation(&y_now, y, m->fps / 3 * 5);
+        }
 
         xSemaphoreGive(xMutex);
     }
@@ -1315,9 +1489,11 @@ public:
     int16_t s_x = 0;               // x坐标
     int16_t s_y = 0;               // y坐标
     OptionMode mode = TEXT_MORE;   // 模式
-    alignMode align = LEFT_CENTER; // 对齐方式
+    alignMode align = LEFT_CORNER; // 对齐方式
     uint16_t s_len = 0;            // 文本长度
     uint8_t font_height = 12;      // 字体高度
+
+    uint16_t s_h = 0; // 文本高度
 
     bool *lucency = nullptr;
     bool *if_display = nullptr;
@@ -1329,7 +1505,11 @@ public:
 
     int text_height_now = 0;
 
-    Axeuh_UI_Ebook(String s_, int16_t s_x_ = 0, int16_t s_y_ = 0, alignMode a = LEFT_CENTER)
+    Axeuh_UI_Ebook()
+    {
+    }
+
+    Axeuh_UI_Ebook(String s_, int16_t s_x_ = 0, int16_t s_y_ = 0, alignMode a = LEFT_CORNER)
     {
         s = s_;
         s_x = s_x_;
@@ -1337,6 +1517,62 @@ public:
         align = a;
     }
     void drawEbook(U8G2 *D, IN_PUT_Mode IN, Axeuh_UI_Panel *P, Axeuh_UI *m);
+
+    void down()
+    {
+        xSemaphoreTake(xMutex, 100);
+        int x_ = 0, y_ = 0;
+        for (int j = 0; j < s.length(); j++)
+        {
+            char currentChar = s.charAt(j);
+
+            if (currentChar == '\r' || currentChar == '\t' || currentChar == '\n')
+            {
+                y_ += font_height;
+                x_ = 0;
+            }
+            else if (isChineseChar(currentChar))
+            {
+                if (x_ + font_height > *w_now - font_height - 6)
+                {
+                    y_ += font_height;
+                    x_ = 0;
+                }
+                else
+                    x_ += len_c.Get((s.substring(j, j + 3)).c_str());
+                j += 2;
+            }
+            else
+            {
+                int sub = len_c.Get((s.substring(j, j + 1)).c_str());
+                if (x_ + sub > *w_now - sub - 6)
+                {
+                    y_ += font_height;
+                    x_ = 0;
+                }
+                else
+                    x_ += sub;
+            }
+        }
+
+        page_y = -y_ + *interlude_h + *h - 3;
+        xSemaphoreGive(xMutex);
+    }
+    void print(String a)
+    {
+        xSemaphoreTake(xMutex, 100);
+        s += a;
+        xSemaphoreGive(xMutex);
+        down();
+    }
+    void println(String a = "")
+    {
+        xSemaphoreTake(xMutex, 100);
+        s += a;
+        s += "\n";
+        xSemaphoreGive(xMutex);
+        down();
+    }
 
     void set(MenuCallback_Ebook cb) { callback = cb; } // 设置回调函数
     void set(String s_, int16_t s_x_ = 0, int16_t s_y_ = 0, alignMode a = LEFT_CENTER)
@@ -1436,7 +1672,7 @@ public:
 
     bool num_of = 0;
 
-    MenuOption::AutolenString *Aoutput = nullptr;
+    // MenuOption::AutolenString *Aoutput = nullptr;
     String *output = nullptr;
 
     bool *lucency = nullptr;
@@ -1451,27 +1687,29 @@ public:
     bool SELECT_isok = 0;
     unsigned long SELECT_time = 0;
 
+    MenuCallback_Ebook callback;
+
     Axeuh_UI_Keyboard()
     {
     }
-    Axeuh_UI_Keyboard(MenuOption::AutolenString *Aoutput)
-    {
-        xSemaphoreTake(xMutex, 100);
-        this->Aoutput = Aoutput;
-        xSemaphoreGive(xMutex);
-    }
+    // Axeuh_UI_Keyboard(MenuOption::AutolenString *Aoutput)
+    // {
+    //     xSemaphoreTake(xMutex, 100);
+    //     this->Aoutput = Aoutput;
+    //     xSemaphoreGive(xMutex);
+    // }
     Axeuh_UI_Keyboard(String *output)
     {
         xSemaphoreTake(xMutex, 100);
         this->output = output;
         xSemaphoreGive(xMutex);
     }
-    void set(MenuOption::AutolenString *Aoutput)
-    {
-        xSemaphoreTake(xMutex, 100);
-        this->Aoutput = Aoutput;
-        xSemaphoreGive(xMutex);
-    }
+    // void set(MenuOption::AutolenString *Aoutput)
+    // {
+    //     xSemaphoreTake(xMutex, 100);
+    //     this->Aoutput = Aoutput;
+    //     xSemaphoreGive(xMutex);
+    // }
     void set(String *output)
     {
         xSemaphoreTake(xMutex, 100);
@@ -1724,6 +1962,8 @@ public:
             Ebook->callback = cb;
         if (slider_ != nullptr)
             slider_->callback = cb;
+        if (keyboard != nullptr)
+            keyboard->callback = cb;
         xSemaphoreGive(xMutex);
     }
 
@@ -1926,9 +2166,9 @@ public:
         {
             if (Panel_->if_display)
             {
-                if (w_ == -(w - 3)||w_ < -(Panel_->w - 3))
+                if (w_ == -(w - 3) || w_ < -(Panel_->w - 3))
                     Panel_->set_interlude(x_, y_, -(Panel_->w - 3), h_);
-                    else
+                else
                     Panel_->set_interlude(x_, y_, w_, h_);
             }
         }
